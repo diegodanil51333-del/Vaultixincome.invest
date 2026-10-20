@@ -10,3 +10,6 @@ app/applet
 .DS_Store
 *.iml
 .idea/
+.aistudio
+firebase-debug.log
+.authoritative_store.json
