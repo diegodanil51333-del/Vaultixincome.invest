@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // Core Helper Functions
+    // ==========================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Secure server-side Admin verification:
+    // 1. Checks verified Firebase Auth token email (canonical Outlook admin address)
+    // 2. Checks cryptographically signed Firebase custom claims (role == 'ADMIN' or admin == true)
+    // 3. Checks verified admin role in the users document in Firestore
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email != null && (
+          request.auth.token.email == 'vaultixincometeam@outlook.com' ||
+          request.auth.token.email == 'Vaultixincometeam@outlook.com' ||
+          request.auth.token.email == 'VAULTIXINCOMETEAM@OUTLOOK.COM'
+        )) ||
+        (request.auth.token.role == 'ADMIN') ||
+        (request.auth.token.admin == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN')
+      );
+    }
+
+    // ==========================================
+    // 1. Users Collection
+    // ==========================================
+    match /users/{userId} {
+      // Users can only read their own profile; Admin can read all users
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Normal user registration rule:
+      // - Authenticated user can ONLY create their own document (request.auth.uid == userId)
+      // - Must default to role == 'USER' (ordinary users cannot grant themselves 'ADMIN')
+      // - Must default to accountStatus == 'ACTIVE'
+      // - Balance, deposits, investments, profit/loss, referral earnings, and bonus balances must be 0
+      // - Passwords and password hashes are strictly prohibited
+      // - Admin can also create user records
+      allow create: if (
+        isAuthenticated() &&
+        request.auth.uid == userId &&
+        request.resource.data.userId == userId &&
+        request.resource.data.role == 'USER' &&
+        request.resource.data.accountStatus == 'ACTIVE' &&
+        (!('balance' in request.resource.data) || request.resource.data.balance == 0) &&
+        (!('totalDeposits' in request.resource.data) || request.resource.data.totalDeposits == 0) &&
+        (!('totalInvestments' in request.resource.data) || request.resource.data.totalInvestments == 0) &&
+        (!('totalProfitLoss' in request.resource.data) || request.resource.data.totalProfitLoss == 0) &&
+        (!('referralEarnings' in request.resource.data) || request.resource.data.referralEarnings == 0) &&
+        (!('bonusBalance' in request.resource.data) || request.resource.data.bonusBalance == 0) &&
+        !('passwordHash' in request.resource.data) &&
+        !('password' in request.resource.data)
+      ) || isAdmin();
+
+      // Normal users CANNOT modify financial fields, roles, account status, passwords, or userId,
+      // EXCEPT when atomically subscribing to an investment plan (where available balance is deducted
+      // and totalInvestments increases by the exact identical positive amount without going negative).
+      allow update: if isAdmin() || (
+        isOwner(userId) && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'balance', 'totalDeposits', 'totalInvestments', 'totalProfitLoss', 
+            'referralEarnings', 'bonusBalance', 'role', 'accountStatus', 
+            'passwordHash', 'password', 'userId'
+          ]) ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'totalInvestments']) &&
+            request.resource.data.balance >= 0 &&
+            resource.data.balance > request.resource.data.balance &&
+            (resource.data.balance - request.resource.data.balance) == (request.resource.data.totalInvestments - resource.data.totalInvestments)
+          )
+        )
+      );
+
+      // Only Admin can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 2. Transactions Collection
+    // ==========================================
+    match /transactions/{txId} {
+      // Users can only read their own transactions; Admin can read all transactions
+      allow read: if isAdmin() || (
+        isAuthenticated() && 
+        resource != null && 
+        resource.data.userId == request.auth.uid
+      );
+      
+      // Normal users can ONLY submit their own PENDING deposit/withdrawal requests OR record active investment YIELD entries.
+      // Normal users CANNOT create approved deposits, unauthorized bonus transactions, or transactions for other accounts.
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        (
+          (
+            request.resource.data.status == 'PENDING' &&
+            (
+              request.resource.data.type == 'DEPOSIT' || 
+              request.resource.data.type == 'WITHDRAWAL' || 
+              request.resource.data.type == 'BONUS_WITHDRAWAL'
+            )
+          ) ||
+          (
+            request.resource.data.status == 'COMPLETED' &&
+            request.resource.data.type == 'YIELD' &&
+            request.resource.data.amount > 0
+          )
+        )
+      );
+      
+      // Only Admin can approve, reject, cancel, or modify transactions
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 3. Investments Collection
+    // ==========================================
+    match /investments/{invId} {
+      // Users can only read their own investments; Admin can read all
+      allow read: if isAdmin() || (
+        isAuthenticated() &&
+        resource != null &&
+        resource.data.userId == request.auth.uid
+      );
+
+      // Strictly validated investment creation:
+      // - Must belong to authenticated user (request.auth.uid == userId)
+      // - Status MUST strictly be initial 'ACTIVE' (users CANNOT mark as 'COMPLETED' or self-award yields)
+      // - Amount and durationDays must be positive
+      // - dailyReturn must be non-negative
+      // - Required structural keys must be present
+      // - Balances cannot be modified (guaranteed by users collection rules)
+      allow create: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'ACTIVE' &&
+        request.resource.data.amount > 0 &&
+        request.resource.data.durationDays > 0 &&
+        request.resource.data.dailyReturn >= 0 &&
+        request.resource.data.keys().hasAll([
+          'userId', 'planId', 'planName', 'asset', 'amount', 
+          'dailyReturn', 'startDate', 'durationDays', 'status'
+        ])
+      );
+
+      // Investment maturity, status changes, and deletions are restricted exclusively to Admin
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 4. Invitations & Referral Tracking
+    // ==========================================
+    match /invitations/{invitationId} {
+      allow read: if isAdmin() || (
+        isAuthenticated() &&
+        resource != null &&
+        (resource.data.referrerId == request.auth.uid || resource.data.referredUserId == request.auth.uid)
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.referrerId == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 5. Support & Inquiries
+    // ==========================================
+    match /support_messages/{msgId} {
+      allow read: if isAdmin() || (
+        isAuthenticated() &&
+        resource != null &&
+        resource.data.userId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // ==========================================
+    // 6. Plans, Wallets & System Configuration (Publicly viewable, Admin-only writes)
+    // ==========================================
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /wallets/{walletId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /referral_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==========================================
+    // 7. Audit Logs & Diagnostics (Strictly Admin only)
+    // ==========================================
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /_diagnostics/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

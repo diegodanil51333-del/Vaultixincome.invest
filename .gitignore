@@ -1,0 +1,12 @@
+/node_modules
+/dist
+/.build-outputs
+debug.keystore.base64
+app/applet
+/build
+/.gradle
+/.kotlin
+/local.properties
+.DS_Store
+*.iml
+.idea/
