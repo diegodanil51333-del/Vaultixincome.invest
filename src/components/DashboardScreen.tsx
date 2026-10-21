@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, Transaction, InvestmentPlan } from '../types';
-import { getInvestments, getTransactions, getPlans } from '../db';
+import { User, Transaction, InvestmentPlan, UserInvestment } from '../types';
+import { getInvestments, getTransactions, getPlans, getAccruedProfitForInvestment } from '../db';
+import { NavTab } from './Sidebar';
 import { 
   Wallet, 
   TrendingUp, 
@@ -9,19 +10,16 @@ import {
   ArrowUpRight, 
   ArrowDownLeft, 
   Clock, 
-  Calculator, 
   Layers, 
-  Crown, 
-  Zap, 
   DollarSign, 
   CheckCircle2, 
-  Building2, 
   Sparkles,
-  Lock,
-  ChevronRight,
-  Activity
+  BookOpen,
+  History,
+  Briefcase,
+  AlertCircle,
+  HelpCircle
 } from 'lucide-react';
-
 import { 
   BitcoinLogo, 
   EthereumLogo, 
@@ -30,30 +28,41 @@ import {
   BnbLogo, 
   XrpLogo 
 } from './CryptoLogos';
-import { HowItWorks } from './HowItWorks';
-import { MarketTracker } from './MarketTracker';
+import { cryptoPriceService, CryptoPriceData } from '../services/cryptoPriceService';
 import { TransactionReceiptModal } from './TransactionReceiptModal';
 
 interface DashboardScreenProps {
   user: User;
-  onNavigateToTab: (tab: 'vaults' | 'invite' | 'wallet') => void;
+  onNavigateToTab: (tab: NavTab) => void;
+  onOpenGuide?: () => void;
 }
 
-export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNavigateToTab }) => {
-  const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
+export const DashboardScreen: React.FC<DashboardScreenProps> = ({ 
+  user, 
+  onNavigateToTab,
+  onOpenGuide 
+}) => {
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
-  // Return Calculator State
-  const [calcAsset, setCalcAsset] = useState<'USDT' | 'BTC' | 'ETH' | 'SOL'>('USDT');
-  const [calcAmount, setCalcAmount] = useState<number>(1000);
-  const [calcDays, setCalcDays] = useState<number>(14);
+  // Authenticated User Records
+  const [investments, setInvestments] = useState<UserInvestment[]>(() => 
+    getInvestments().filter((inv) => inv.userId === user.userId)
+  );
+  const [transactions, setTransactions] = useState<Transaction[]>(() => 
+    getTransactions().filter((tx) => tx.userId === user.userId)
+  );
+  const [plans, setPlans] = useState<InvestmentPlan[]>(() => getPlans().filter((p) => p.isActive));
 
-  const [allInvestments, setAllInvestments] = useState<any[]>(() => getInvestments().filter((inv) => inv.userId === user.userId));
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>(() => getTransactions().filter((tx) => tx.userId === user.userId));
+  // Live Crypto Prices
+  const [cryptoPrices, setCryptoPrices] = useState<Record<string, CryptoPriceData>>(() => 
+    cryptoPriceService.getAllCachedPrices()
+  );
 
   useEffect(() => {
     const handleUpdate = () => {
-      setAllInvestments(getInvestments().filter((inv) => inv.userId === user.userId));
-      setAllTransactions(getTransactions().filter((tx) => tx.userId === user.userId));
+      setInvestments(getInvestments().filter((inv) => inv.userId === user.userId));
+      setTransactions(getTransactions().filter((tx) => tx.userId === user.userId));
+      setPlans(getPlans().filter((p) => p.isActive));
     };
 
     window.addEventListener('vaultix_txs_updated', handleUpdate);
@@ -69,523 +78,427 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ user, onNaviga
     };
   }, [user.userId]);
 
-  const activeInvestments = allInvestments.filter((inv) => inv.status === 'ACTIVE');
-  const completedInvestments = allInvestments.filter((inv) => inv.status === 'COMPLETED');
-  const availablePlans = getPlans().filter((p) => p.isActive);
+  useEffect(() => {
+    let isMounted = true;
+    cryptoPriceService.fetchAllPrices().then((res) => {
+      if (isMounted) setCryptoPrices(res);
+    });
+    const interval = setInterval(() => {
+      cryptoPriceService.fetchAllPrices().then((res) => {
+        if (isMounted) setCryptoPrices(res);
+      });
+    }, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
-  // Dynamic Financial Metrics Calculation
-  const mainBalance = user.balance || 0.0;
-  const referralBalance = user.referralEarnings || 0.0;
-  const activeVaultsValue = activeInvestments.reduce((sum, inv) => sum + inv.amount, 0.0);
-  
-  const completedYields = completedInvestments.reduce((sum, inv) => sum + (inv.dailyReturn * inv.durationDays), 0.0);
-  const totalYieldProfit = Math.max(user.totalProfitLoss || 0.0, completedYields);
+  const activeInvestments = investments.filter((i) => i.status === 'ACTIVE');
+  const availableBalance = user.balance || 0.0;
+  const investmentBalance = activeInvestments.reduce((sum, inv) => sum + inv.amount, 0.0);
+  const totalAccruedProfit = activeInvestments.reduce((sum, inv) => sum + getAccruedProfitForInvestment(inv), 0.0);
+  const recentTransactions = [...transactions]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 5);
 
-  // Real Calculator Yield Rates based on institutional strategies
-  const assetRates: Record<string, { dailyPct: number; planName: string }> = {
-    USDT: { dailyPct: 2.5, planName: 'USDT High-Yield Liquidity Vault' },
-    BTC: { dailyPct: 1.8, planName: 'Bitcoin Prime Reserve Vault' },
-    ETH: { dailyPct: 2.2, planName: 'Ethereum Smart Arbitrage Vault' },
-    SOL: { dailyPct: 3.0, planName: 'Solana High-Velocity Node' }
-  };
+  const featuredPlans = plans.slice(0, 3);
 
-  const selectedRate = assetRates[calcAsset] || assetRates.USDT;
-  const calcDailyYield = (calcAmount * selectedRate.dailyPct) / 100;
-  const calcTotalProfit = calcDailyYield * calcDays;
-  const calcTotalReturn = calcAmount + calcTotalProfit;
+  const cryptoAssetsList = [
+    { symbol: 'BTC', name: 'Bitcoin', logo: <BitcoinLogo className="w-5 h-5" /> },
+    { symbol: 'ETH', name: 'Ethereum', logo: <EthereumLogo className="w-5 h-5" /> },
+    { symbol: 'USDT', name: 'Tether (TRC20/ERC20)', logo: <TetherLogo className="w-5 h-5" /> },
+    { symbol: 'BNB', name: 'BNB Chain', logo: <BnbLogo className="w-5 h-5" /> },
+    { symbol: 'SOL', name: 'Solana', logo: <SolanaLogo className="w-5 h-5" /> },
+    { symbol: 'XRP', name: 'Ripple', logo: <XrpLogo className="w-5 h-5" /> },
+  ];
 
   return (
-    <div className="space-y-8 pb-20 md:pb-8">
-      {/* Institutional Crypto Reserve Header Banner */}
-      <div className="bg-gradient-to-r from-[#141923] via-[#1A2230] to-[#141923] border border-[#D4AF37]/40 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-        {/* Subtle Treasury Glow Elements */}
-        <div className="absolute -right-20 -top-20 w-80 h-80 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 -bottom-20 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <div className="inline-flex items-center space-x-1.5 bg-[#10141D] border border-[#D4AF37]/50 px-3 py-1 rounded-full text-[#D4AF37] font-extrabold uppercase tracking-widest text-[10px] shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>VAULTIX DIGITAL ASSET PLATFORM</span>
-              </div>
-              <div className="inline-flex items-center space-x-1 text-[11px] text-emerald-400 font-mono bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>100% Full Reserve Custody</span>
-              </div>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Institutional Wealth Terminal & Vaults
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl font-normal leading-relaxed">
-              Real-time multi-signature digital asset treasury custody, automated algorithmic arbitrage yield, and private wealth allocations for <span className="font-bold text-white">{user.fullName}</span> (Account <span className="font-mono text-[#D4AF37]">{user.accountId}</span>).
-            </p>
+    <div className="space-y-6">
+      {/* Welcome Banner */}
+      <div className="bg-[#141923] border border-[#2A3447] p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2 text-xs font-bold text-[#D4AF37] uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Digital Asset Portfolio</span>
           </div>
+          <h1 className="text-xl sm:text-2xl font-black text-white">
+            Welcome, {user.fullName || user.username}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Account ID: <span className="font-mono text-slate-300 font-semibold">{user.accountId || 'VX-DEFAULT'}</span> | Verified Institutional Custody
+          </p>
+        </div>
 
-          <div className="flex flex-row lg:flex-col sm:flex-row gap-3 items-stretch lg:items-end">
+        {/* Quick Guide Button */}
+        <div className="flex items-center space-x-2.5">
+          {onOpenGuide && (
+            <button
+              onClick={onOpenGuide}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-[#1D2432] hover:bg-[#2A3447] text-[#D4AF37] border border-[#D4AF37]/40 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Investment Guide</span>
+            </button>
+          )}
+          <button
+            onClick={() => onNavigateToTab('wallet')}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-[#D4AF37] hover:bg-[#b8982e] text-black text-xs font-extrabold rounded-xl shadow-md transition-all cursor-pointer"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Deposit Funds</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Primary Financial Overview Cards (Required: Available, Investment, Profit/Loss, Active) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Available Balance */}
+        <div className="bg-[#141923] border border-[#2A3447] p-5 rounded-2xl space-y-3 relative overflow-hidden group hover:border-[#D4AF37]/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Available Balance</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <Wallet className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <div className="text-2xl font-mono font-black text-white">
+              ${availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-[11px] text-slate-400">Ready for Vaults or Withdrawals</div>
+          </div>
+          <div className="flex items-center space-x-2 pt-1">
             <button
               onClick={() => onNavigateToTab('wallet')}
-              className="flex-1 sm:flex-initial bg-[#D4AF37] hover:bg-[#b8982e] text-black font-black px-5 py-3 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all shadow-xl shadow-[#D4AF37]/15 cursor-pointer"
+              className="text-[11px] font-bold text-[#D4AF37] hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <Wallet className="w-4 h-4" />
-              <span>DEPOSIT CAPITAL</span>
+              Deposit <ArrowUpRight className="w-3 h-3" />
             </button>
+            <span className="text-slate-600">•</span>
             <button
-              onClick={() => onNavigateToTab('vaults')}
-              className="flex-1 sm:flex-initial bg-[#141923] hover:bg-[#1D2432] text-white font-bold px-5 py-3 rounded-xl text-xs border border-[#2A3447] hover:border-slate-500 flex items-center justify-center space-x-2 transition-all cursor-pointer"
+              onClick={() => onNavigateToTab('wallet')}
+              className="text-[11px] font-bold text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
             >
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span>EXPLORE ALL VAULTS</span>
+              Withdraw
             </button>
           </div>
         </div>
 
-        {/* Dynamic Financial Metrics Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-6 pt-6 border-t border-[#2A3447]/80">
-          <div className="bg-[#0B0E14]/80 p-4 rounded-2xl border border-[#2A3447]/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Main Available Balance</span>
-              <DollarSign className="w-3.5 h-3.5 text-[#D4AF37]" />
-            </div>
-            <div className="text-xl md:text-2xl font-black text-[#D4AF37] mt-1 font-mono">
-              ${mainBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">Instant TRC20 Liquidity</span>
-          </div>
-
-          <div className="bg-[#0B0E14]/80 p-4 rounded-2xl border border-[#2A3447]/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Active Deployed Capital</span>
-              <Lock className="w-3.5 h-3.5 text-[#06B6D4]" />
-            </div>
-            <div className="text-xl md:text-2xl font-black text-[#06B6D4] mt-1 font-mono">
-              ${activeVaultsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">In Compounding Vaults</span>
-          </div>
-
-          <div className="bg-[#0B0E14]/80 p-4 rounded-2xl border border-[#2A3447]/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Total Yield & Profit</span>
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-            </div>
-            <div className="text-xl md:text-2xl font-black text-emerald-400 mt-1 font-mono">
-              +${totalYieldProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <span className="text-[10px] text-emerald-400/80 mt-1 block">Daily Compound Interest</span>
-          </div>
-
-          <div className="bg-[#0B0E14]/80 p-4 rounded-2xl border border-[#2A3447]/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Referral Tier Balance</span>
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            </div>
-            <div className="text-xl md:text-2xl font-black text-amber-300 mt-1 font-mono">
-              ${referralBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">Affiliate Commission Tier</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Return & Yield Calculator Module */}
-      <div className="bg-[#141923] border border-[#2A3447] rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#2A3447]">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <Calculator className="w-5 h-5 text-[#D4AF37]" />
-              <h2 className="text-lg md:text-xl font-black text-white">Investment Yield & Return Calculator</h2>
-            </div>
-            <p className="text-xs text-slate-400">
-              Calculate projected compounding yield across crypto vaults and VVIP fixed-term strategies.
-            </p>
-          </div>
-
-          {/* Asset Selection Tabs */}
-          <div className="flex items-center bg-[#0B0E14] border border-[#2A3447] p-1 rounded-2xl">
-            {(['USDT', 'BTC', 'ETH', 'SOL'] as const).map((ast) => (
-              <button
-                key={ast}
-                onClick={() => setCalcAsset(ast)}
-                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center space-x-1.5 cursor-pointer ${
-                  calcAsset === ast
-                    ? 'bg-[#D4AF37] text-black shadow-md'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {ast === 'BTC' && <BitcoinLogo className="w-3.5 h-3.5" />}
-                {ast === 'ETH' && <EthereumLogo className="w-3.5 h-3.5" />}
-                {ast === 'USDT' && <TetherLogo className="w-3.5 h-3.5" />}
-                {ast === 'SOL' && <SolanaLogo className="w-3.5 h-3.5" />}
-                <span>{ast}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          {/* Controls Column */}
-          <div className="lg:col-span-7 space-y-5">
-            <div>
-              <div className="flex justify-between text-xs font-bold text-slate-300 mb-2">
-                <span>Investment Capital ($ USD)</span>
-                <span className="font-mono text-[#D4AF37] text-sm">${calcAmount.toLocaleString()}</span>
-              </div>
-              <input
-                type="range"
-                min="50"
-                max="50000"
-                step="50"
-                value={calcAmount}
-                onChange={(e) => setCalcAmount(Number(e.target.value))}
-                className="w-full h-2 bg-[#0B0E14] rounded-lg appearance-none cursor-pointer accent-[#D4AF37]"
-              />
-              <div className="flex flex-wrap gap-2 mt-3">
-                {[100, 500, 1000, 5000, 10000, 25000].map((preset) => (
-                  <button
-                    key={preset}
-                    onClick={() => setCalcAmount(preset)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                      calcAmount === preset
-                        ? 'bg-[#1D2432] border-[#D4AF37] text-[#D4AF37]'
-                        : 'bg-[#0B0E14] border-[#2A3447] text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    ${preset.toLocaleString()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-2">Strategy Term Duration</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { days: 7, label: '7 Days', badge: 'Starter' },
-                  { days: 14, label: '14 Days', badge: 'Alpha' },
-                  { days: 30, label: '30 Days', badge: 'Prime' },
-                  { days: 60, label: '60 Days', badge: 'Executive' }
-                ].map((term) => (
-                  <button
-                    key={term.days}
-                    onClick={() => setCalcDays(term.days)}
-                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                      calcDays === term.days
-                        ? 'bg-[#1D2432] border-[#D4AF37] shadow-md shadow-[#D4AF37]/5'
-                        : 'bg-[#0B0E14] border-[#2A3447] hover:border-slate-500'
-                    }`}
-                  >
-                    <span className="text-[10px] text-slate-400 block">{term.badge}</span>
-                    <span className="font-extrabold text-sm text-white">{term.label}</span>
-                  </button>
-                ))}
-              </div>
+        {/* 2. Investment Balance */}
+        <div className="bg-[#141923] border border-[#2A3447] p-5 rounded-2xl space-y-3 relative overflow-hidden group hover:border-[#D4AF37]/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Investment Balance</span>
+            <div className="w-8 h-8 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37]">
+              <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-
-          {/* Results Summary Box */}
-          <div className="lg:col-span-5 bg-[#0B0E14] border border-[#2A3447] rounded-2xl p-5 space-y-4 shadow-xl">
-            <div className="text-xs font-extrabold text-[#D4AF37] uppercase tracking-wider flex items-center justify-between">
-              <span>Projected Yield Metrics</span>
-              <span className="text-[10px] text-emerald-400 font-mono">+{selectedRate.dailyPct}% / DAY</span>
+          <div className="space-y-0.5">
+            <div className="text-2xl font-mono font-black text-white">
+              ${investmentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-
-            <div className="space-y-3 divide-y divide-[#2A3447]/60 text-xs">
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-slate-400">Daily Accrual:</span>
-                <span className="font-mono font-bold text-emerald-400">+${calcDailyYield.toFixed(2)} / day</span>
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-slate-400">Total Yield ({calcDays} Days):</span>
-                <span className="font-mono font-bold text-emerald-400">+${calcTotalProfit.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-slate-400">Total Maturity Payout:</span>
-                <span className="font-mono font-black text-lg text-[#D4AF37]">${calcTotalReturn.toFixed(2)}</span>
-              </div>
-            </div>
-
+            <div className="text-[11px] text-slate-400">Locked in Active Vaults</div>
+          </div>
+          <div className="pt-1">
             <button
-              onClick={() => onNavigateToTab('vaults')}
-              className="w-full bg-[#D4AF37] hover:bg-[#b8982e] text-black font-black py-3 rounded-xl text-xs transition-all shadow-lg shadow-[#D4AF37]/10 flex items-center justify-center space-x-1.5 cursor-pointer"
+              onClick={() => onNavigateToTab('my_investments')}
+              className="text-[11px] font-bold text-[#D4AF37] hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>DEPLOY IN {calcAsset} VAULT</span>
-              <ArrowRight className="w-4 h-4" />
+              View My Investments <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* 3. Total Profit or Loss */}
+        <div className="bg-[#141923] border border-[#2A3447] p-5 rounded-2xl space-y-3 relative overflow-hidden group hover:border-[#D4AF37]/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Profit / Loss</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <DollarSign className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <div className="text-2xl font-mono font-black text-emerald-400">
+              +${totalAccruedProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-[11px] text-emerald-500/80">Compounded Daily Yields</div>
+          </div>
+          <div className="pt-1 text-[11px] text-slate-500">
+            Calculated from verified contract terms
+          </div>
+        </div>
+
+        {/* 4. Active Investments Counter */}
+        <div className="bg-[#141923] border border-[#2A3447] p-5 rounded-2xl space-y-3 relative overflow-hidden group hover:border-[#D4AF37]/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Positions</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <Briefcase className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <div className="text-2xl font-mono font-black text-white">
+              {activeInvestments.length}
+            </div>
+            <div className="text-[11px] text-slate-400">Running Strategy Vaults</div>
+          </div>
+          <div className="pt-1">
+            <button
+              onClick={() => onNavigateToTab('investment_plans')}
+              className="text-[11px] font-bold text-[#D4AF37] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              Add New Position <ArrowRight className="w-3 h-3" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Featured Core Investment Strategy Vaults Layout */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
+      {/* Quick Navigation Action Grid (Requirement 4) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button
+          onClick={() => onNavigateToTab('investment_plans')}
+          className="p-3.5 bg-[#141923] hover:bg-[#1D2432] border border-[#2A3447] hover:border-[#D4AF37]/40 rounded-xl flex items-center space-x-3 transition-all cursor-pointer text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
+          </div>
           <div>
-            <h3 className="text-lg font-black text-white flex items-center space-x-2">
-              <Layers className="w-5 h-5 text-[#D4AF37]" />
-              <span>Core Institutional Yield Vaults</span>
-            </h3>
-            <p className="text-xs text-slate-400">Verified algorithmic staking strategies and VVIP institutional allocations</p>
+            <div className="text-xs font-bold text-white">Investment Plans</div>
+            <div className="text-[10px] text-slate-400">Explore Vaults</div>
           </div>
-          <button
-            onClick={() => onNavigateToTab('vaults')}
-            className="text-xs font-bold text-[#D4AF37] hover:underline flex items-center space-x-1 cursor-pointer"
-          >
-            <span>View All Plans</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Vault 1: USDT Liquidity */}
-          <div className="bg-[#141923] border border-[#2A3447] hover:border-[#26A17B]/60 p-5 rounded-2xl space-y-4 transition-all shadow-xl group">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <TetherLogo className="w-9 h-9" />
-                <div>
-                  <h4 className="font-black text-white text-sm">USDT Prime Vault</h4>
-                  <span className="text-[10px] text-slate-400 font-mono">TRC20 Liquidity Routing</span>
-                </div>
-              </div>
-              <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-black px-2.5 py-1 rounded-full">
-                2.5% / DAY
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Automated high-frequency arbitrage deployed across top decentralized lending markets.
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-[#2A3447]">
-              <div>
-                <span className="text-slate-400 block text-[10px]">Min. Capital</span>
-                <span className="font-bold text-white font-mono">$50.00</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">Term Duration</span>
-                <span className="font-bold text-slate-300">7 Days</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigateToTab('vaults')}
-              className="w-full bg-[#1D2432] hover:bg-[#26A17B] hover:text-black text-white font-extrabold py-2.5 rounded-xl text-xs transition-all border border-[#2A3447] cursor-pointer"
-            >
-              SUBSCRIBE STRATEGY
-            </button>
+        <button
+          onClick={() => onNavigateToTab('my_investments')}
+          className="p-3.5 bg-[#141923] hover:bg-[#1D2432] border border-[#2A3447] hover:border-[#D4AF37]/40 rounded-xl flex items-center space-x-3 transition-all cursor-pointer text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+            <Briefcase className="w-4 h-4" />
           </div>
-
-          {/* Vault 2: Bitcoin Alpha Staking */}
-          <div className="bg-[#141923] border border-[#2A3447] hover:border-[#F7931A]/60 p-5 rounded-2xl space-y-4 transition-all shadow-xl group">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <BitcoinLogo className="w-9 h-9" />
-                <div>
-                  <h4 className="font-black text-white text-sm">Bitcoin Alpha Vault</h4>
-                  <span className="text-[10px] text-slate-400 font-mono">BTC Sovereign Staking</span>
-                </div>
-              </div>
-              <span className="bg-[#F7931A]/15 border border-[#F7931A]/30 text-[#F7931A] text-xs font-black px-2.5 py-1 rounded-full">
-                1.8% / DAY
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Institutional cold-custody yield strategy generating daily satoshi compounding.
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-[#2A3447]">
-              <div>
-                <span className="text-slate-400 block text-[10px]">Min. Capital</span>
-                <span className="font-bold text-white font-mono">$100.00</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">Term Duration</span>
-                <span className="font-bold text-slate-300">14 Days</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigateToTab('vaults')}
-              className="w-full bg-[#1D2432] hover:bg-[#F7931A] hover:text-black text-white font-extrabold py-2.5 rounded-xl text-xs transition-all border border-[#2A3447] cursor-pointer"
-            >
-              SUBSCRIBE STRATEGY
-            </button>
+          <div>
+            <div className="text-xs font-bold text-white">My Investments</div>
+            <div className="text-[10px] text-slate-400">{activeInvestments.length} Active Vaults</div>
           </div>
+        </button>
 
-          {/* Vault 3: VVIP Executive Tier 1 */}
-          <div className="bg-[#141923] border border-amber-500/40 hover:border-amber-400 p-5 rounded-2xl space-y-4 transition-all shadow-xl shadow-amber-500/5 group relative overflow-hidden">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/40">
-                  <Crown className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-black text-white text-sm">VVIP Executive Tier</h4>
-                  <span className="text-[10px] text-amber-400 font-mono">1-Month Fixed Lock</span>
-                </div>
-              </div>
-              <span className="bg-amber-400 text-black text-xs font-black px-2.5 py-1 rounded-full">
-                20% RETURN
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Private wealth institutional allocation with fixed 1-month return guarantee.
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-[#2A3447]">
-              <div>
-                <span className="text-slate-400 block text-[10px]">Capital Range</span>
-                <span className="font-bold text-white font-mono">$10,000 – $50,000</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">Term Duration</span>
-                <span className="font-bold text-amber-400">30 Days</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigateToTab('vaults')}
-              className="w-full bg-amber-400 hover:bg-amber-300 text-black font-black py-2.5 rounded-xl text-xs transition-all cursor-pointer shadow-md"
-            >
-              INVEST IN VVIP TIER
-            </button>
+        <button
+          onClick={() => onNavigateToTab('transactions')}
+          className="p-3.5 bg-[#141923] hover:bg-[#1D2432] border border-[#2A3447] hover:border-[#D4AF37]/40 rounded-xl flex items-center space-x-3 transition-all cursor-pointer text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0">
+            <History className="w-4 h-4" />
           </div>
-        </div>
+          <div>
+            <div className="text-xs font-bold text-white">Transactions</div>
+            <div className="text-[10px] text-slate-400">Verified History</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigateToTab('wallet')}
+          className="p-3.5 bg-[#141923] hover:bg-[#1D2432] border border-[#2A3447] hover:border-[#D4AF37]/40 rounded-xl flex items-center space-x-3 transition-all cursor-pointer text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0">
+            <Wallet className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-white">Wallet & Balances</div>
+            <div className="text-[10px] text-slate-400">Deposit & Payouts</div>
+          </div>
+        </button>
       </div>
 
-      {/* Live Market Tracker Component */}
-      <MarketTracker />
-
-      {/* Active Investment Vaults Live Tracking */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-            <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
-            <span>Active Investment Vaults ({activeInvestments.length})</span>
-          </h3>
-          <button
-            onClick={() => onNavigateToTab('vaults')}
-            className="text-xs font-bold text-[#D4AF37] hover:underline cursor-pointer"
-          >
-            + Subscribe New Vault
-          </button>
+      {/* Cryptocurrency Market Rates & Assets (Requirement 3 & 4) */}
+      <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <span>Cryptocurrency Assets & Live Market</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                ● Live 30s Feed
+              </span>
+            </h2>
+            <p className="text-xs text-slate-400">Supported collateral assets for deposits, vault lockups, and withdrawals</p>
+          </div>
         </div>
 
-        {activeInvestments.length === 0 ? (
-          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-8 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-[#1D2432] text-[#D4AF37] flex items-center justify-center mx-auto border border-[#2A3447]">
-              <Layers className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-bold text-white">No Active Vaults Subscribed</h4>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              You do not have any active yield vaults deployed. Select an algorithmic strategy or use the calculator above to begin earning daily compound interest.
-            </p>
-            <button
-              onClick={() => onNavigateToTab('vaults')}
-              className="bg-[#D4AF37] hover:bg-[#b8982e] text-black font-extrabold text-xs px-6 py-2.5 rounded-xl transition-all shadow-md cursor-pointer"
-            >
-              Browse Yield Vaults
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activeInvestments.map((inv) => (
-              <div key={inv.id} className="bg-[#141923] border border-[#2A3447] rounded-2xl p-5 space-y-3 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-white">{inv.planName}</h4>
-                    <span className="text-[10px] text-[#D4AF37] font-semibold">{inv.asset} Institutional Strategy</span>
-                  </div>
-                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-1" />
-                    <span>ACTIVE</span>
-                  </span>
-                </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {cryptoAssetsList.map((asset) => {
+            const priceData = cryptoPrices[asset.symbol];
+            const priceFormatted = priceData
+              ? priceData.priceUsd >= 1
+                ? `$${priceData.priceUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : `$${priceData.priceUsd.toFixed(4)}`
+              : '$0.00';
+            const changeVal = priceData ? priceData.change24h : 0;
+            const isPositive = changeVal >= 0;
 
-                <div className="grid grid-cols-3 gap-2 py-3 border-y border-[#2A3447] text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Principal</span>
-                    <span className="font-bold text-white font-mono">${inv.amount.toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Daily Return</span>
-                    <span className="font-bold text-emerald-400 font-mono">+${inv.dailyReturn.toFixed(2)}/d</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Duration</span>
-                    <span className="font-bold text-slate-300 font-mono">{inv.durationDays} Days</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Started: {new Date(inv.startDate).toLocaleDateString()}</span>
-                  <span className="text-emerald-400 font-semibold font-mono">Compounding Daily</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* How It Works Section */}
-      <HowItWorks />
-
-      {/* Recent Transactions Activity */}
-      <div>
-        <h3 className="text-sm font-bold text-white mb-3 flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-[#06B6D4]" />
-          <span>Recent Treasury Ledger Activity</span>
-        </h3>
-
-        {allTransactions.length === 0 ? (
-          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 text-center text-slate-400 text-xs">
-            No recent transaction history recorded.
-          </div>
-        ) : (
-          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl divide-y divide-[#2A3447] overflow-hidden shadow-xl">
-            {allTransactions.slice(0, 10).map((tx) => (
+            return (
               <div
-                key={tx.id}
-                onClick={() => setSelectedTxForReceipt(tx)}
-                className="p-4 flex items-center justify-between text-xs hover:bg-[#1D2432] transition-colors cursor-pointer"
+                key={asset.symbol}
+                className="bg-[#1D2432] border border-[#2A3447] p-3 rounded-xl space-y-2 hover:border-[#D4AF37]/40 transition-all"
               >
-                <div className="flex items-center space-x-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${tx.type === 'DEPOSIT' || tx.type === 'REFERRAL_REWARD' || tx.type === 'FIRST_DEPOSIT_BONUS' || tx.type === 'ADMIN_CREDIT' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                    {tx.type === 'DEPOSIT' || tx.type === 'REFERRAL_REWARD' || tx.type === 'FIRST_DEPOSIT_BONUS' || tx.type === 'ADMIN_CREDIT' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                <div className="flex items-center space-x-2">
+                  {asset.logo}
+                  <span className="font-extrabold text-xs text-white">{asset.symbol}</span>
+                </div>
+                <div>
+                  <div className="text-xs font-mono font-bold text-slate-200">{priceFormatted}</div>
+                  <div className={`text-[10px] font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {isPositive ? '+' : ''}{changeVal.toFixed(2)}%
                   </div>
-                  <div>
-                    <div className="font-bold text-white">{tx.note || tx.type}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{new Date(tx.timestamp).toLocaleString()}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Featured Investment Plans Section (Requirement 4) */}
+      <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
+              <span>Available Investment Plans</span>
+            </h2>
+            <p className="text-xs text-slate-400">Institutional yield vaults with automated daily compounding</p>
+          </div>
+          <button
+            onClick={() => onNavigateToTab('investment_plans')}
+            className="text-xs font-bold text-[#D4AF37] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            All Plans <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {featuredPlans.map((plan) => {
+            const dailyRate = plan.dailyRate !== undefined ? plan.dailyRate : plan.dailyYield;
+            return (
+              <div
+                key={plan.id}
+                className="bg-[#1D2432] border border-[#2A3447] hover:border-[#D4AF37]/50 rounded-xl p-4 flex flex-col justify-between space-y-4 transition-all"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#141923] text-slate-400 border border-[#2A3447]">
+                      {plan.asset} Strategy
+                    </span>
+                    <span className="text-[10px] font-bold text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded-full">
+                      {plan.riskLevel}
+                    </span>
+                  </div>
+
+                  <h3 className="font-extrabold text-sm text-white">{plan.name}</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{plan.description}</p>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#2A3447] text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Daily Yield</span>
+                      <span className="font-mono font-bold text-emerald-400">{dailyRate.toFixed(2)}% / day</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Duration</span>
+                      <span className="font-mono font-bold text-slate-200">{plan.lockDays} Days</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Min Deposit</span>
+                      <span className="font-mono font-bold text-slate-200">${plan.minDeposit.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Management Fee</span>
+                      <span className="font-mono font-bold text-emerald-400">0.00%</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <div className={`font-black font-mono text-sm ${tx.type === 'DEPOSIT' || tx.type === 'REFERRAL_REWARD' || tx.type === 'FIRST_DEPOSIT_BONUS' || tx.type === 'ADMIN_CREDIT' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {tx.type === 'DEPOSIT' || tx.type === 'REFERRAL_REWARD' || tx.type === 'FIRST_DEPOSIT_BONUS' || tx.type === 'ADMIN_CREDIT' ? '+' : '-'}${tx.amount.toFixed(2)}
-                  </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    tx.status === 'APPROVED' || tx.status === 'COMPLETED'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : tx.status === 'PENDING'
-                      ? 'bg-amber-500/20 text-amber-400'
-                      : 'bg-rose-500/20 text-rose-400'
-                  }`}>
-                    {tx.status === 'PENDING' ? 'Processing' : tx.status === 'APPROVED' || tx.status === 'COMPLETED' ? 'Completed' : 'Cancelled'}
-                  </span>
-                </div>
+                <button
+                  onClick={() => onNavigateToTab('investment_plans')}
+                  className="w-full py-2 bg-[#D4AF37] hover:bg-[#b8982e] text-black text-xs font-bold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span>Invest in Plan</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-            ))}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent Transactions Preview (Requirement 4) */}
+      <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <History className="w-4 h-4 text-[#D4AF37]" />
+              <span>Recent Transactions</span>
+            </h2>
+            <p className="text-xs text-slate-400">Latest deposits, yields, and withdrawals on your account</p>
+          </div>
+          <button
+            onClick={() => onNavigateToTab('transactions')}
+            className="text-xs font-bold text-[#D4AF37] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            Full History <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {recentTransactions.length === 0 ? (
+          <div className="p-8 text-center space-y-2 bg-[#1D2432]/50 rounded-xl border border-[#2A3447]">
+            <p className="text-xs text-slate-400">No transactions recorded yet.</p>
+            <button
+              onClick={() => onNavigateToTab('wallet')}
+              className="text-xs font-bold text-[#D4AF37] hover:underline"
+            >
+              Make your first deposit
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentTransactions.map((tx) => {
+              const isPositive = tx.type === 'DEPOSIT' || tx.type === 'YIELD' || tx.type.includes('BONUS');
+              return (
+                <div
+                  key={tx.id}
+                  onClick={() => setSelectedTx(tx)}
+                  className="p-3 bg-[#1D2432] hover:bg-[#252E3E] rounded-xl border border-[#2A3447] flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                      isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'
+                    }`}>
+                      {isPositive ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white">{tx.note || tx.type}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {new Date(tx.timestamp).toLocaleDateString()} • {tx.status}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className={`text-xs font-mono font-bold ${isPositive ? 'text-emerald-400' : 'text-slate-200'}`}>
+                      {isPositive ? '+' : '-'}${tx.amount.toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      {tx.cryptoAmount ? `${tx.cryptoAmount} ${tx.cryptoAsset || ''}` : tx.currency}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Transaction Receipt Modal */}
-      <TransactionReceiptModal
-        transaction={selectedTxForReceipt}
-        onClose={() => setSelectedTxForReceipt(null)}
-      />
+      {selectedTx && (
+        <TransactionReceiptModal
+          transaction={selectedTx}
+          onClose={() => setSelectedTx(null)}
+        />
+      )}
     </div>
   );
 };

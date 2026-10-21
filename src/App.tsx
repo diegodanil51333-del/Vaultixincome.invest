@@ -7,18 +7,21 @@ import { AuthScreen } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
 import { DashboardScreen } from './components/DashboardScreen';
 import { VaultsScreen } from './components/VaultsScreen';
-import { BuyCryptoScreen } from './components/BuyCryptoScreen';
+import { MyInvestmentsScreen } from './components/MyInvestmentsScreen';
+import { TransactionsScreen } from './components/TransactionsScreen';
 import { InviteScreen } from './components/InviteScreen';
 import { WalletScreen } from './components/WalletScreen';
+import { ProfileScreen } from './components/ProfileScreen';
+import { SettingsScreen } from './components/SettingsScreen';
 import { SupportScreen } from './components/SupportScreen';
 import { AdminScreen } from './components/AdminScreen';
-import { SettingsScreen } from './components/SettingsScreen';
+import { InvestmentGuideModal } from './components/InvestmentGuideModal';
 import { InvestmentNotificationToast } from './components/InvestmentNotificationToast';
 import { PublicWithdrawalToast } from './components/PublicWithdrawalToast';
 import { AmbientBackground } from './components/AmbientBackground';
 import { Footer } from './components/Footer';
 
-const TAB_STORAGE_KEY = 'vaultix_current_tab_v10';
+const TAB_STORAGE_KEY = 'vaultix_current_tab_v11';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -26,6 +29,7 @@ export function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
   useEffect(() => {
     // Failsafe timer to ensure UI always reveals within 300ms even on slow mobile devices
@@ -54,7 +58,7 @@ export function App() {
             Boolean(u?.email && recEmail && typeof u.email === 'string' && u.email.toLowerCase() === recEmail) ||
             Boolean(u?.username && recUsername && typeof u.username === 'string' && u.username.toLowerCase() === recUsername)
         );
-        const freshUser: User = found ? { ...found, ...recoveredSession } : recoveredSession;
+        const freshUser: User = found ? { ...found, ...recoveredSession } : { ...recoveredSession };
         if (
           (freshUser?.email && typeof freshUser.email === 'string' && freshUser.email.toLowerCase() === 'vaultixincometeam@outlook.com') ||
           recoveredSession?.role === 'ADMIN'
@@ -66,16 +70,21 @@ export function App() {
         // Restore saved active tab on page refresh or direct URL navigation
         const savedTab = (localStorage.getItem(TAB_STORAGE_KEY) || sessionStorage.getItem(TAB_STORAGE_KEY)) as NavTab | null;
         const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
+
         if (pathname.includes('/dashboard')) {
           setCurrentTabState('dashboard');
-        } else if (pathname.includes('/vaults') || pathname.includes('/plans') || pathname.includes('/invest')) {
-          setCurrentTabState('vaults');
+        } else if (pathname.includes('/plans') || pathname.includes('/vaults')) {
+          setCurrentTabState('investment_plans');
+        } else if (pathname.includes('/my-investments') || pathname.includes('/investments')) {
+          setCurrentTabState('my_investments');
+        } else if (pathname.includes('/transactions') || pathname.includes('/history')) {
+          setCurrentTabState('transactions');
         } else if (pathname.includes('/wallet')) {
           setCurrentTabState('wallet');
-        } else if (pathname.includes('/invite') || pathname.includes('/referral')) {
-          setCurrentTabState('invite');
-        } else if (pathname.includes('/buy') || pathname.includes('/crypto')) {
-          setCurrentTabState('buy_crypto');
+        } else if (pathname.includes('/referrals') || pathname.includes('/invite')) {
+          setCurrentTabState('referrals');
+        } else if (pathname.includes('/profile')) {
+          setCurrentTabState('profile');
         } else if (pathname.includes('/settings')) {
           setCurrentTabState('settings');
         } else if (pathname.includes('/support')) {
@@ -139,6 +148,7 @@ export function App() {
         }
       } catch {}
     };
+
     window.addEventListener('vaultix_users_updated', handleUpdate);
     window.addEventListener('vaultix_txs_updated', handleUpdate);
     window.addEventListener('vaultix_investments_updated', handleUpdate);
@@ -154,10 +164,17 @@ export function App() {
   }, []);
 
   const setCurrentTab = (tab: NavTab) => {
-    setCurrentTabState(tab);
+    // Normalize aliases
+    const targetTab =
+      tab === 'vaults' ? 'investment_plans' :
+      tab === 'invite' ? 'referrals' :
+      tab === 'buy_crypto' ? 'wallet' :
+      tab;
+
+    setCurrentTabState(targetTab);
     try {
-      localStorage.setItem(TAB_STORAGE_KEY, tab);
-      sessionStorage.setItem(TAB_STORAGE_KEY, tab);
+      localStorage.setItem(TAB_STORAGE_KEY, targetTab);
+      sessionStorage.setItem(TAB_STORAGE_KEY, targetTab);
     } catch {
       // Fallback
     }
@@ -240,40 +257,105 @@ export function App() {
     return <LandingPage onOpenAuth={handleOpenAuth} />;
   }
 
-  // Authenticated Users: Full Wealth Management Application
+  // Authenticated Users: Full Digital Asset Management Application
   return (
-    <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col font-sans relative">
+    <div className="min-h-screen bg-[#0B0E14] text-white flex flex-col font-sans relative selection:bg-[#D4AF37] selection:text-black">
       <AmbientBackground />
       <PublicWithdrawalToast />
       <InvestmentNotificationToast />
-      <Navbar user={currentUser} onLogout={handleLogout} onNavigateToTab={setCurrentTab} />
 
-      <div className="flex-1 flex flex-col md:flex-row relative z-10">
-        <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} user={currentUser} />
+      {/* Primary Dashboard Navbar with 3-line hamburger menu */}
+      <Navbar 
+        user={currentUser} 
+        currentTab={currentTab} 
+        onSelectTab={setCurrentTab} 
+        onLogout={handleLogout}
+        onOpenGuide={() => setIsGuideModalOpen(true)}
+      />
 
-        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-7xl mx-auto w-full">
+      <div className="flex-1 flex relative z-10">
+        {/* Desktop Sidebar (10 options) */}
+        <Sidebar 
+          currentTab={currentTab} 
+          onSelectTab={setCurrentTab} 
+          onLogout={handleLogout} 
+          user={currentUser} 
+        />
+
+        {/* Main Content Area */}
+        <main className="flex-1 p-4 md:p-8 pb-20 max-w-7xl mx-auto w-full">
+          {/* 1. Dashboard */}
           {currentTab === 'dashboard' && (
-            <DashboardScreen user={currentUser} onNavigateToTab={setCurrentTab} />
+            <DashboardScreen 
+              user={currentUser} 
+              onNavigateToTab={setCurrentTab}
+              onOpenGuide={() => setIsGuideModalOpen(true)}
+            />
           )}
-          {currentTab === 'vaults' && (
+
+          {/* 2. Investment Plans */}
+          {(currentTab === 'investment_plans' || currentTab === 'vaults') && (
             <VaultsScreen user={currentUser} onUserUpdated={handleUserUpdated} />
           )}
-          {currentTab === 'buy_crypto' && <BuyCryptoScreen />}
-          {currentTab === 'invite' && (
-            <InviteScreen user={currentUser} onUserUpdated={handleUserUpdated} />
+
+          {/* 3. My Investments */}
+          {currentTab === 'my_investments' && (
+            <MyInvestmentsScreen 
+              user={currentUser} 
+              onNavigateToPlans={() => setCurrentTab('investment_plans')}
+              onNavigateToWallet={() => setCurrentTab('wallet')}
+              onUserUpdated={handleUserUpdated}
+            />
           )}
-          {currentTab === 'wallet' && (
+
+          {/* 4. Transaction History */}
+          {currentTab === 'transactions' && (
+            <TransactionsScreen 
+              user={currentUser} 
+              onNavigateToWallet={() => setCurrentTab('wallet')}
+              onNavigateToPlans={() => setCurrentTab('investment_plans')}
+            />
+          )}
+
+          {/* 5. Wallet */}
+          {(currentTab === 'wallet' || currentTab === 'buy_crypto') && (
             <WalletScreen user={currentUser} onUserUpdated={handleUserUpdated} />
           )}
+
+          {/* 6. Referrals */}
+          {(currentTab === 'referrals' || currentTab === 'invite') && (
+            <InviteScreen user={currentUser} onUserUpdated={handleUserUpdated} />
+          )}
+
+          {/* 7. Profile Details */}
+          {currentTab === 'profile' && (
+            <ProfileScreen user={currentUser} onUserUpdated={handleUserUpdated} />
+          )}
+
+          {/* 8. Settings */}
           {currentTab === 'settings' && (
             <SettingsScreen user={currentUser} onUserUpdated={handleUserUpdated} />
           )}
-          {currentTab === 'support' && <SupportScreen user={currentUser} />}
+
+          {/* 9. Help and Support */}
+          {currentTab === 'support' && (
+            <SupportScreen user={currentUser} />
+          )}
+
+          {/* 10. Admin Panel */}
           {currentTab === 'admin' && currentUser.role === 'ADMIN' && (
             <AdminScreen currentAdmin={currentUser} />
           )}
         </main>
       </div>
+
+      {/* Global 7-Step Investment Guide Modal */}
+      <InvestmentGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        onNavigateToPlans={() => setCurrentTab('investment_plans')}
+        onNavigateToWallet={() => setCurrentTab('wallet')}
+      />
 
       <Footer onOpenSupport={() => setCurrentTab('support')} />
     </div>
