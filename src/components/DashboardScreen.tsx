@@ -45,13 +45,16 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
   // Authenticated User Records
+  // Safe defensive filtered records
   const [investments, setInvestments] = useState<UserInvestment[]>(() => 
-    getInvestments().filter((inv) => inv.userId === user.userId)
+    (getInvestments() || []).filter((inv) => Boolean(inv && inv.userId === user?.userId))
   );
   const [transactions, setTransactions] = useState<Transaction[]>(() => 
-    getTransactions().filter((tx) => tx.userId === user.userId)
+    (getTransactions() || []).filter((tx) => Boolean(tx && tx.userId === user?.userId))
   );
-  const [plans, setPlans] = useState<InvestmentPlan[]>(() => getPlans().filter((p) => p.isActive));
+  const [plans, setPlans] = useState<InvestmentPlan[]>(() => 
+    (getPlans() || []).filter((p) => Boolean(p && p.isActive))
+  );
 
   // Live Crypto Prices
   const [cryptoPrices, setCryptoPrices] = useState<Record<string, CryptoPriceData>>(() => 
@@ -60,9 +63,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   useEffect(() => {
     const handleUpdate = () => {
-      setInvestments(getInvestments().filter((inv) => inv.userId === user.userId));
-      setTransactions(getTransactions().filter((tx) => tx.userId === user.userId));
-      setPlans(getPlans().filter((p) => p.isActive));
+      setInvestments((getInvestments() || []).filter((inv) => Boolean(inv && inv.userId === user?.userId)));
+      setTransactions((getTransactions() || []).filter((tx) => Boolean(tx && tx.userId === user?.userId)));
+      setPlans((getPlans() || []).filter((p) => Boolean(p && p.isActive)));
     };
 
     window.addEventListener('vaultix_txs_updated', handleUpdate);

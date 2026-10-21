@@ -20,6 +20,7 @@ import { InvestmentNotificationToast } from './components/InvestmentNotification
 import { PublicWithdrawalToast } from './components/PublicWithdrawalToast';
 import { AmbientBackground } from './components/AmbientBackground';
 import { Footer } from './components/Footer';
+import { LayoutDashboard, TrendingUp, Briefcase, History, Wallet as WalletIcon } from 'lucide-react';
 
 const TAB_STORAGE_KEY = 'vaultix_current_tab_v11';
 
@@ -209,11 +210,8 @@ export function App() {
     saveCurrentSession(freshUser);
     setShowAuthScreen(false);
 
-    if (freshUser.role === 'ADMIN') {
-      setCurrentTab('admin');
-    } else {
-      setCurrentTab('dashboard');
-    }
+    // Always navigate to Dashboard upon successful login
+    setCurrentTab('dashboard');
   };
 
   const handleUserUpdated = (updatedUser: User) => {
@@ -346,6 +344,29 @@ export function App() {
           {currentTab === 'admin' && currentUser.role === 'ADMIN' && (
             <AdminScreen currentAdmin={currentUser} />
           )}
+
+          {/* Fallback to Dashboard if tab is unrecognized or user lacks admin permission */}
+          {(
+            currentTab !== 'dashboard' &&
+            currentTab !== 'investment_plans' &&
+            currentTab !== 'vaults' &&
+            currentTab !== 'my_investments' &&
+            currentTab !== 'transactions' &&
+            currentTab !== 'wallet' &&
+            currentTab !== 'buy_crypto' &&
+            currentTab !== 'referrals' &&
+            currentTab !== 'invite' &&
+            currentTab !== 'profile' &&
+            currentTab !== 'settings' &&
+            currentTab !== 'support' &&
+            !(currentTab === 'admin' && currentUser.role === 'ADMIN')
+          ) && (
+            <DashboardScreen 
+              user={currentUser} 
+              onNavigateToTab={setCurrentTab}
+              onOpenGuide={() => setIsGuideModalOpen(true)}
+            />
+          )}
         </main>
       </div>
 
@@ -356,6 +377,55 @@ export function App() {
         onNavigateToPlans={() => setCurrentTab('investment_plans')}
         onNavigateToWallet={() => setCurrentTab('wallet')}
       />
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#141923]/95 backdrop-blur-md border-t border-[#2A3447] z-40 px-2 py-1.5 flex items-center justify-around shadow-2xl">
+        <button
+          onClick={() => setCurrentTab('dashboard')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold transition-all ${
+            currentTab === 'dashboard' ? 'text-[#D4AF37] font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5 mb-0.5" />
+          <span>Dashboard</span>
+        </button>
+        <button
+          onClick={() => setCurrentTab('investment_plans')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold transition-all ${
+            currentTab === 'investment_plans' || currentTab === 'vaults' ? 'text-[#D4AF37] font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <TrendingUp className="w-5 h-5 mb-0.5" />
+          <span>Plans</span>
+        </button>
+        <button
+          onClick={() => setCurrentTab('my_investments')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold transition-all ${
+            currentTab === 'my_investments' ? 'text-[#D4AF37] font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Briefcase className="w-5 h-5 mb-0.5" />
+          <span>Portfolio</span>
+        </button>
+        <button
+          onClick={() => setCurrentTab('transactions')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold transition-all ${
+            currentTab === 'transactions' ? 'text-[#D4AF37] font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <History className="w-5 h-5 mb-0.5" />
+          <span>Activity</span>
+        </button>
+        <button
+          onClick={() => setCurrentTab('wallet')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold transition-all ${
+            currentTab === 'wallet' || currentTab === 'buy_crypto' ? 'text-[#D4AF37] font-bold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <WalletIcon className="w-5 h-5 mb-0.5" />
+          <span>Wallet</span>
+        </button>
+      </nav>
 
       <Footer onOpenSupport={() => setCurrentTab('support')} />
     </div>
