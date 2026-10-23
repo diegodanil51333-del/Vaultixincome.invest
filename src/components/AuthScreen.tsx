@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Transaction } from '../types';
-import { getUsers, saveUsers, saveCurrentSession, getTransactions, saveTransactions, processRegistrationBonuses } from '../db';
+import { getUsers, saveUsers, saveCurrentSession, getTransactions, saveTransactions, processRegistrationBonuses, normalizeUser } from '../db';
 import { auth, db, doc, setDoc, getDoc, collection, getDocs, query, where, isFirebaseConfigured, cleanFirestoreData } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User as FirebaseUser } from 'firebase/auth';
 import { Lock, User as UserIcon, CheckCircle, AlertCircle, Gift, ArrowLeft, RefreshCw } from 'lucide-react';
@@ -286,8 +286,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
         return;
       }
 
-      saveCurrentSession(loggedInUser);
-      onLoginSuccess(loggedInUser);
+      const safeUser = normalizeUser(loggedInUser);
+      saveCurrentSession(safeUser);
+      onLoginSuccess(safeUser);
     } catch (err: any) {
       console.error('Login process error:', err);
       let errMsg = err?.message || 'Authentication could not be completed. Please check your credentials and try again.';

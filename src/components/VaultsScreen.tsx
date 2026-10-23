@@ -96,7 +96,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
 
     if (user.balance < depositAmount) {
       setError(
-        `Insufficient balance. Your available balance is $${user.balance.toFixed(2)}, but this investment requires $${depositAmount.toFixed(2)}. Please deposit funds or choose a plan within your available balance.`
+        `Insufficient balance. Your available balance is $${(Number(user?.balance) || 0).toFixed(2)}, but this investment requires $${depositAmount.toFixed(2)}. Please deposit funds or choose a plan within your available balance.`
       );
       return;
     }
@@ -341,7 +341,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
           <div>
             <div className="flex justify-between text-xs text-slate-300 mb-1">
               <span>Deposit Amount ($)</span>
-              <span>Available Balance: ${user.balance.toFixed(2)}</span>
+              <span>Available Balance: ${(Number(user?.balance) || 0).toFixed(2)}</span>
             </div>
             <input
               type="number"
@@ -569,7 +569,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-[#2A3447]">
                 <span className="text-slate-400">Your Available Balance:</span>
-                <span className="font-mono text-slate-300">${user.balance.toFixed(2)}</span>
+                <span className="font-mono text-slate-300">${(Number(user?.balance) || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Balance After Investment:</span>

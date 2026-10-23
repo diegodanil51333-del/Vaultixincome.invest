@@ -89,7 +89,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
     setWError(null);
     setWSuccess(null);
 
-    const bonusBal = user.bonusBalance || user.referralEarnings || 0;
+    const bonusBal = user.bonusBalance || (Number(user?.referralEarnings) || 0) || 0;
 
     if (bonusBal < minThreshold) {
       setWError(`Bonus Wallet balance ($${bonusBal.toFixed(2)}) is below the $${minThreshold.toFixed(2)} withdrawal threshold.`);
@@ -188,7 +188,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
     const bonusAmt = 5.0;
     const updatedUser: User = {
       ...user,
-      referralEarnings: user.referralEarnings + bonusAmt
+      referralEarnings: (Number(user?.referralEarnings) || 0) + bonusAmt
     };
 
     const userIdx = allUsers.findIndex((u) => u.userId === user.userId);
@@ -244,7 +244,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
           <div>
             <span className="text-xs text-slate-400">Referral Earnings Balance</span>
             <div className="text-xl font-extrabold text-[#10B981] mt-0.5">
-              ${(user.bonusBalance || user.referralEarnings || 0).toFixed(2)}
+              ${(user.bonusBalance || (Number(user?.referralEarnings) || 0) || 0).toFixed(2)}
             </div>
           </div>
           <div>
@@ -285,21 +285,21 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
             <div className="bg-[#1D2432] p-4 rounded-xl border border-[#2A3447] flex items-center justify-between text-xs">
               <div>
                 <span className="text-slate-400 block">Available Referral Earnings</span>
-                <span className="text-lg font-bold text-[#10B981]">${user.referralEarnings.toFixed(2)}</span>
+                <span className="text-lg font-bold text-[#10B981]">${(Number(user?.referralEarnings) || 0).toFixed(2)}</span>
               </div>
               <div>
                 <span className="text-slate-400 block">Withdrawal Status</span>
-                <span className={`font-bold ${user.referralEarnings >= minThreshold ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {user.referralEarnings >= minThreshold ? 'Eligible for Withdrawal' : `Requires $${(minThreshold - user.referralEarnings).toFixed(2)} More`}
+                <span className={`font-bold ${(Number(user?.referralEarnings) || 0) >= minThreshold ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {(Number(user?.referralEarnings) || 0) >= minThreshold ? 'Eligible for Withdrawal' : `Requires $${(minThreshold - (Number(user?.referralEarnings) || 0)).toFixed(2)} More`}
                 </span>
               </div>
             </div>
 
             <button
               onClick={handleStartWithdrawal}
-              disabled={user.referralEarnings < minThreshold}
+              disabled={(Number(user?.referralEarnings) || 0) < minThreshold}
               className={`w-full py-3 rounded-xl text-xs font-bold transition-all shadow-md ${
-                user.referralEarnings >= minThreshold
+                (Number(user?.referralEarnings) || 0) >= minThreshold
                   ? 'bg-[#10B981] hover:bg-[#0d9668] text-black cursor-pointer'
                   : 'bg-slate-700 text-slate-400 cursor-not-allowed'
               }`}

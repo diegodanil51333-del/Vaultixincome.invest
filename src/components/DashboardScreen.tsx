@@ -126,10 +126,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <span>Digital Asset Portfolio</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white">
-            Welcome, {user.fullName || user.username}
+            Welcome, {user?.fullName || user?.username || 'Valued Investor'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Account ID: <span className="font-mono text-slate-300 font-semibold">{user.accountId || 'VX-DEFAULT'}</span> | Verified Institutional Custody
+            Account ID: <span className="font-mono text-slate-300 font-semibold">{user?.accountId || 'VX-DEFAULT'}</span> | Verified Institutional Custody
           </p>
         </div>
 
@@ -482,7 +482,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
                   <div className="text-right">
                     <div className={`text-xs font-mono font-bold ${isPositive ? 'text-emerald-400' : 'text-slate-200'}`}>
-                      {isPositive ? '+' : '-'}${tx.amount.toFixed(2)}
+                      {isPositive ? '+' : '-'}${(Number(tx.amount) || 0).toFixed(2)}
                     </div>
                     <div className="text-[10px] text-slate-500 font-mono">
                       {tx.cryptoAmount ? `${tx.cryptoAmount} ${tx.cryptoAsset || ''}` : tx.currency}

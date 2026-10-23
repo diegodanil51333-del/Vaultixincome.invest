@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User } from './types';
-import { initializeDatabase, getCurrentSession, saveCurrentSession, getUsers } from './db';
+import { initializeDatabase, getCurrentSession, saveCurrentSession, getUsers, normalizeUser } from './db';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { AuthScreen } from './components/AuthScreen';
@@ -215,8 +215,9 @@ export function App() {
   };
 
   const handleUserUpdated = (updatedUser: User) => {
-    setCurrentUser(updatedUser);
-    saveCurrentSession(updatedUser);
+    const safeUser = normalizeUser(updatedUser);
+    setCurrentUser(safeUser);
+    saveCurrentSession(safeUser);
   };
 
   const handleLogout = () => {

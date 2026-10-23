@@ -155,7 +155,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ user, onUserUpdated 
     }
 
     if (amount > user.balance) {
-      setWError(`Insufficient funds. Your available balance is $${user.balance.toFixed(2)}.`);
+      setWError(`Insufficient funds. Your available balance is $${(Number(user?.balance) || 0).toFixed(2)}.`);
       isSubmittingWithRef.current = false;
       setIsSubmittingWith(false);
       return;
@@ -446,7 +446,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ user, onUserUpdated 
           <div>
             <div className="flex justify-between text-xs text-slate-300 mb-1">
               <span>Withdrawal Amount ($ USD)</span>
-              <span>Available Active Balance: ${user.balance.toFixed(2)}</span>
+              <span>Available Active Balance: ${(Number(user?.balance) || 0).toFixed(2)}</span>
             </div>
             <input
               type="number"

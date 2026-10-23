@@ -1,3 +1,55 @@
+
+export function normalizeUser(rawUser: any): User {
+  if (!rawUser || typeof rawUser !== "object") {
+    return {
+      userId: `USR-${Math.floor(100000 + Math.random() * 900000)}`,
+      accountId: `VX-${Math.floor(100000 + Math.random() * 900000)}`,
+      username: "investor",
+      fullName: "Valued Investor",
+      email: "",
+      role: "USER",
+      accountStatus: "ACTIVE",
+      balance: 0.0,
+      referralEarnings: 0.0,
+      bonusBalance: 0.0,
+      totalDeposits: 0.0,
+      totalInvestments: 0.0,
+      totalProfitLoss: 0.0,
+      referralCode: `VXREF-${Math.floor(1000 + Math.random() * 9000)}`,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  const email = typeof rawUser.email === "string" ? rawUser.email.trim() : "";
+  const username = typeof rawUser.username === "string" && rawUser.username.trim()
+    ? rawUser.username.trim()
+    : (email ? email.split("@")[0] : "investor");
+  const isAdmin = email.toLowerCase() === "vaultixincometeam@outlook.com" || rawUser.role === "ADMIN";
+
+  return {
+    userId: rawUser.userId || `USR-${Math.floor(100000 + Math.random() * 900000)}`,
+    accountId: rawUser.accountId || `VX-${Math.floor(100000 + Math.random() * 900000)}`,
+    username,
+    fullName: rawUser.fullName || username,
+    email,
+    role: isAdmin ? "ADMIN" : "USER",
+    accountStatus: rawUser.accountStatus === "SUSPENDED" ? "SUSPENDED" : "ACTIVE",
+    balance: typeof rawUser.balance === "number" && !isNaN(rawUser.balance) ? Math.max(0, rawUser.balance) : (Number(rawUser.balance) || 0.0),
+    referralEarnings: typeof rawUser.referralEarnings === "number" && !isNaN(rawUser.referralEarnings) ? Math.max(0, rawUser.referralEarnings) : (Number(rawUser.referralEarnings) || 0.0),
+    bonusBalance: typeof rawUser.bonusBalance === "number" && !isNaN(rawUser.bonusBalance) ? Math.max(0, rawUser.bonusBalance) : (Number(rawUser.bonusBalance) || 0.0),
+    totalDeposits: typeof rawUser.totalDeposits === "number" && !isNaN(rawUser.totalDeposits) ? Math.max(0, rawUser.totalDeposits) : (Number(rawUser.totalDeposits) || 0.0),
+    totalInvestments: typeof rawUser.totalInvestments === "number" && !isNaN(rawUser.totalInvestments) ? Math.max(0, rawUser.totalInvestments) : (Number(rawUser.totalInvestments) || 0.0),
+    totalProfitLoss: typeof rawUser.totalProfitLoss === "number" && !isNaN(rawUser.totalProfitLoss) ? rawUser.totalProfitLoss : (Number(rawUser.totalProfitLoss) || 0.0),
+    referralCode: rawUser.referralCode || `VXREF-${Math.floor(1000 + Math.random() * 9000)}`,
+    referredBy: rawUser.referredBy,
+    referredByUsername: rawUser.referredByUsername,
+    referredByDisplayName: rawUser.referredByDisplayName,
+    hasReceivedSignupBonus: Boolean(rawUser.hasReceivedSignupBonus),
+    hasReceivedFirstDepositBonus: Boolean(rawUser.hasReceivedFirstDepositBonus),
+    createdAt: rawUser.createdAt || new Date().toISOString()
+  };
+}
+
 import { User, CryptoWalletConfig, ReferralConfig, InvestmentPlan, UserInvestment, Transaction, Invitation, AuditLog } from './types';
 import { auth, db, doc, setDoc, getDoc, collection, onSnapshot, cleanFirestoreData, onAuthStateChanged, query, where, updateDoc, runTransaction } from './firebase';
 import { cryptoPriceService } from './services/cryptoPriceService';
@@ -1310,7 +1362,7 @@ export function getCurrentSession(): User | null {
         Boolean(u?.email && sEmail && typeof u.email === 'string' && u.email.toLowerCase() === sEmail) ||
         Boolean(u?.username && sUsername && typeof u.username === 'string' && u.username.toLowerCase() === sUsername)
     );
-    return freshUser || sessionUser;
+    return normalizeUser(freshUser || sessionUser);
   } catch {
     return null;
   }
