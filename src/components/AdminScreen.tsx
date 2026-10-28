@@ -11,7 +11,6 @@ import { cryptoPriceService } from '../services/cryptoPriceService';
 import {
   ShieldAlert, Search, CheckCircle, AlertCircle, X, DollarSign, Wallet, ArrowUpRight,
   Layers, Sliders, Activity, RefreshCw, Copy, Check, TrendingUp,
-  Download
 } from 'lucide-react';
 import { TransactionReceiptModal } from './TransactionReceiptModal';
 

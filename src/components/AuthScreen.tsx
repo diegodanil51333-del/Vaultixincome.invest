@@ -3,7 +3,7 @@ import { User, Transaction } from '../types';
 import { getUsers, saveUsers, saveCurrentSession, getTransactions, saveTransactions, processRegistrationBonuses, normalizeUser } from '../db';
 import { auth, db, doc, setDoc, getDoc, collection, getDocs, query, where, isFirebaseConfigured, cleanFirestoreData } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User as FirebaseUser } from 'firebase/auth';
-import { Lock, User as UserIcon, CheckCircle, AlertCircle, Gift, ArrowLeft, RefreshCw, Download } from 'lucide-react';
+import { Lock, User as UserIcon, CheckCircle, AlertCircle, Gift, ArrowLeft, RefreshCw } from 'lucide-react';
 import { AmbientBackground } from './AmbientBackground';
 
 interface AuthScreenProps {
@@ -856,18 +856,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
                 </button>
               </form>
             )}
-            <div className="mt-4 pt-3 border-t border-[#2A3447]/60 text-center">
-              <a
-                href="/vaultixincome-latest-c30b8f9.zip"
-                download="vaultixincome-latest-c30b8f9.zip"
-                className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-[#D4AF37] hover:underline"
-                title="Download full project ZIP archive"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download Latest Code Package (.ZIP)</span>
-              </a>
             </div>
-          </div>
         </div>
       </div>
     </div>
