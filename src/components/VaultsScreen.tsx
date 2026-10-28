@@ -90,11 +90,11 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
     }
 
     if (depositAmount < selectedPlan.minDeposit || depositAmount > selectedPlan.maxDeposit) {
-      setError(`Deposit amount must be between $${selectedPlan.minDeposit.toLocaleString()} and $${selectedPlan.maxDeposit.toLocaleString()} for ${selectedPlan.name}.`);
+      setError(`Deposit amount must be between $${(Number(selectedPlan?.minDeposit) || 0).toLocaleString()} and $${(Number(selectedPlan?.maxDeposit) || 0).toLocaleString()} for ${selectedPlan.name}.`);
       return;
     }
 
-    if (user.balance < depositAmount) {
+    if ((Number(user?.balance) || 0) < depositAmount) {
       setError(
         `Insufficient balance. Your available balance is $${(Number(user?.balance) || 0).toFixed(2)}, but this investment requires $${depositAmount.toFixed(2)}. Please deposit funds or choose a plan within your available balance.`
       );
@@ -116,7 +116,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
     try {
       const res = await subscribeInvestmentPlan(user, selectedPlan.id, depositAmount, idempotencyKey);
       onUserUpdated(res.user);
-      setSuccess(`Successfully subscribed $${depositAmount.toLocaleString()} to ${selectedPlan.name}! Estimated yield: +$${res.investment.dailyReturn.toFixed(2)}/day.`);
+      setSuccess(`Successfully subscribed $${(Number(depositAmount) || 0).toLocaleString()} to ${selectedPlan.name}! Estimated yield: +$${res.investment.dailyReturn.toFixed(2)}/day.`);
       setShowConfirmModal(false);
     } catch (err: any) {
       setError(err.message || 'Subscription failed.');
@@ -314,11 +314,11 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#2A3447] text-[11px]">
                 <div>
                   <span className="text-slate-400 block">Min Deposit</span>
-                  <span className="font-bold text-white">${plan.minDeposit.toLocaleString()}</span>
+                  <span className="font-bold text-white">${(Number(plan?.minDeposit) || 0).toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Max Limit</span>
-                  <span className="font-bold text-white">${plan.maxDeposit.toLocaleString()}</span>
+                  <span className="font-bold text-white">${(Number(plan?.maxDeposit) || 0).toLocaleString()}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Lock Term</span>
@@ -368,7 +368,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
             type="submit"
             className="w-full bg-[#D4AF37] hover:bg-[#b8982e] text-black font-bold py-3 rounded-xl text-sm transition-all shadow-md cursor-pointer"
           >
-            CONFIRM PLAN SUBSCRIPTION (${depositAmount.toLocaleString()})
+            CONFIRM PLAN SUBSCRIPTION (${(Number(depositAmount) || 0).toLocaleString()})
           </button>
         </form>
       </div>
@@ -413,7 +413,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
                     </div>
 
                     <div className="text-right">
-                      <div className="text-xs font-bold text-white">${inv.amount.toFixed(2)} Principal</div>
+                      <div className="text-xs font-bold text-white">${(Number(inv?.amount) || 0).toFixed(2)} Principal</div>
                       <div className="text-xs font-extrabold text-[#10B981]">
                         +${accruedProfit.toFixed(2)} Accrued Profit ({((accruedProfit / inv.amount) * 100).toFixed(2)}%)
                       </div>
@@ -472,7 +472,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
             </h3>
 
             <div className="bg-[#1D2432] border border-[#2A3447] rounded-xl p-4 space-y-2 text-xs">
-              <div className="flex justify-between"><span className="text-slate-400">Principal Amount:</span><span className="font-bold text-white">${selectedInvForWithdraw.amount.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Principal Amount:</span><span className="font-bold text-white">${(Number(selectedInvForWithdraw?.amount) || 0).toFixed(2)}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Accrued Profit:</span><span className="font-bold text-[#10B981]">+${getAccruedProfitForInvestment(selectedInvForWithdraw).toFixed(2)}</span></div>
               <div className="flex justify-between pt-1 border-t border-[#2A3447]"><span className="text-slate-300 font-bold">Total Payout Value:</span><span className="font-extrabold text-[#D4AF37]">${(selectedInvForWithdraw.amount + getAccruedProfitForInvestment(selectedInvForWithdraw)).toFixed(2)} USD</span></div>
             </div>
@@ -551,7 +551,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Investment Amount:</span>
-                <span className="font-extrabold text-white text-base font-mono">${depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD</span>
+                <span className="font-extrabold text-white text-base font-mono">${(Number(depositAmount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Daily Return:</span>
@@ -574,7 +574,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Balance After Investment:</span>
                 <span className="font-mono font-bold text-emerald-400">
-                  ${Math.max(0, user.balance - depositAmount).toFixed(2)}
+                  ${Math.max(0, (Number(user?.balance) || 0) - depositAmount).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -601,7 +601,7 @@ export const VaultsScreen: React.FC<VaultsScreenProps> = ({ user, onUserUpdated 
                 {isSubscribing ? (
                   <span>Processing Investment...</span>
                 ) : (
-                  <span>Confirm & Lock (${depositAmount.toLocaleString()})</span>
+                  <span>Confirm & Lock (${(Number(depositAmount) || 0).toLocaleString()})</span>
                 )}
               </button>
             </div>

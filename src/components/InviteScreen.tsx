@@ -22,7 +22,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
   useEffect(() => {
     const handleUpdate = () => {
       setAllUsers(getUsers());
-      const freshUser = getUsers().find((u) => u.userId === user.userId);
+      const freshUser = getUsers().find((u) => u?.userId === user?.userId);
       if (freshUser) {
         onUserUpdated(freshUser);
       }
@@ -37,7 +37,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
       window.removeEventListener('vaultix_txs_updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [user.userId, onUserUpdated]);
+  }, [user?.userId, onUserUpdated]);
 
   // Referral Withdrawal State
   const [withdrawStep, setWithdrawStep] = useState<'IDLE' | 'FEE_PROMPT' | 'SUBMIT_ADDRESS'>('IDLE');
@@ -51,24 +51,24 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
   const minThreshold = refConfig.withdrawalThreshold || 50.0;
   const NETWORK_FEE = 15.0;
 
-  const referralLink = `${window.location.origin}/?ref=${user.referralCode}`;
-  const invitations = getInvitations().filter((inv) => inv.inviterUsername === user.username);
+  const referralLink = typeof window !== "undefined" ? `${window.location.origin}/?ref=${user?.referralCode || ""}` : "";
+  const invitations = (getInvitations() || []).filter((inv) => Boolean(inv && inv.inviterUsername && user?.username && inv.inviterUsername === user.username));
   
   // Accurately track every referred user by userId, username, or referralCode
   const referredUsers = allUsers.filter((u) => {
-    if (!u || u.userId === user.userId) return false;
-    const matchId = Boolean(u.referredBy && u.referredBy === user.userId);
+    if (!u || u?.userId === user?.userId) return false;
+    const matchId = Boolean(u.referredBy && u.referredBy === user?.userId);
     const matchUsername = Boolean(
       u.referredByUsername &&
-      user.username &&
+      (user?.username || "") &&
       typeof u.referredByUsername === 'string' &&
-      typeof user.username === 'string' &&
-      u.referredByUsername.toLowerCase() === user.username.toLowerCase()
+      typeof (user?.username || "") === 'string' &&
+      u.referredByUsername.toLowerCase() === (user?.username || "").toLowerCase()
     );
     const matchRefCode = Boolean(
       u.referredBy &&
-      user.referralCode &&
-      u.referredBy.toUpperCase() === user.referralCode.toUpperCase()
+      (user?.referralCode || "VXREF-DEFAULT") &&
+      u.referredBy.toUpperCase() === (user?.referralCode || "VXREF-DEFAULT").toUpperCase()
     );
     return matchId || matchUsername || matchRefCode;
   });
@@ -80,7 +80,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
   };
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(user.referralCode);
+    navigator.clipboard.writeText((user?.referralCode || "VXREF-DEFAULT"));
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
@@ -89,7 +89,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
     setWError(null);
     setWSuccess(null);
 
-    const bonusBal = user.bonusBalance || (Number(user?.referralEarnings) || 0) || 0;
+    const bonusBal = (Number(user?.bonusBalance) || 0) + (Number(user?.referralEarnings) || 0);
 
     if (bonusBal < minThreshold) {
       setWError(`Bonus Wallet balance ($${bonusBal.toFixed(2)}) is below the $${minThreshold.toFixed(2)} withdrawal threshold.`);
@@ -123,7 +123,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
 
     try {
       const tx = await submitBonusWithdrawalRequest(user, withdrawAmt, destinationAddress.trim());
-      const freshUser = getUsers().find((u) => u.userId === user.userId) || user;
+      const freshUser = getUsers().find((u) => u?.userId === user?.userId) || user;
       onUserUpdated(freshUser);
       setWSuccess(`Bonus Wallet Withdrawal request #${tx.id} of $${withdrawAmt.toFixed(2)} submitted! Status: PENDING ($15 Network Fee Confirmed)`);
       setWithdrawStep('IDLE');
@@ -146,7 +146,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
       return;
     }
 
-    if (user?.username && targetUsername.toLowerCase() === user.username.toLowerCase()) {
+    if (user?.username && targetUsername.toLowerCase() === (user?.username || "").toLowerCase()) {
       setError('You cannot invite yourself.');
       return;
     }
@@ -164,7 +164,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
     const allInvs = getInvitations();
     const existing = allInvs.find(
       (inv) =>
-        Boolean(inv?.inviterUsername && user?.username && inv.inviterUsername.toLowerCase() === user.username.toLowerCase()) &&
+        Boolean(inv?.inviterUsername && user?.username && inv.inviterUsername.toLowerCase() === (user?.username || "").toLowerCase()) &&
         Boolean(inv?.inviteeUsername && inv.inviteeUsername.toLowerCase() === targetUsername.toLowerCase())
     );
 
@@ -175,7 +175,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
 
     const newInv: Invitation = {
       id: `INVITE-${Math.floor(1000 + Math.random() * 9000)}`,
-      inviterUsername: user.username,
+      inviterUsername: (user?.username || ""),
       inviteeUsername: recipient.username,
       status: 'ACCEPTED',
       timestamp: new Date().toISOString(),
@@ -191,7 +191,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
       referralEarnings: (Number(user?.referralEarnings) || 0) + bonusAmt
     };
 
-    const userIdx = allUsers.findIndex((u) => u.userId === user.userId);
+    const userIdx = allUsers.findIndex((u) => u?.userId === user?.userId);
     if (userIdx !== -1) {
       allUsers[userIdx] = updatedUser;
       saveUsers(allUsers);
@@ -402,7 +402,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
               <input
                 type="text"
                 readOnly
-                value={user.referralCode}
+                value={(user?.referralCode || "VXREF-DEFAULT")}
                 className="flex-1 bg-[#1D2432] border border-[#2A3447] rounded-xl px-3.5 py-2 text-sm text-[#D4AF37] font-bold focus:outline-none"
               />
               <button
@@ -503,7 +503,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
               </thead>
               <tbody className="divide-y divide-[#2A3447]">
                 {referredUsers.map((ru) => (
-                  <tr key={ru.userId} className="hover:bg-[#1D2432]/50 transition-colors">
+                  <tr key={ru?.userId} className="hover:bg-[#1D2432]/50 transition-colors">
                     <td className="py-2.5 px-3">
                       <div className="flex items-center space-x-2">
                         <div className="w-7 h-7 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37] font-bold text-xs">

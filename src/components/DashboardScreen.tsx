@@ -98,7 +98,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   }, []);
 
   const activeInvestments = investments.filter((i) => i.status === 'ACTIVE');
-  const availableBalance = user.balance || 0.0;
+  const availableBalance = Number(user?.balance) || 0.0;
   const investmentBalance = activeInvestments.reduce((sum, inv) => sum + inv.amount, 0.0);
   const totalAccruedProfit = activeInvestments.reduce((sum, inv) => sum + getAccruedProfitForInvestment(inv), 0.0);
   const recentTransactions = [...transactions]
@@ -166,7 +166,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </div>
           <div className="space-y-0.5">
             <div className="text-2xl font-mono font-black text-white">
-              ${availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${(Number(availableBalance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="text-[11px] text-slate-400">Ready for Vaults or Withdrawals</div>
           </div>
@@ -197,7 +197,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </div>
           <div className="space-y-0.5">
             <div className="text-2xl font-mono font-black text-white">
-              ${investmentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${(Number(investmentBalance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="text-[11px] text-slate-400">Locked in Active Vaults</div>
           </div>
@@ -221,7 +221,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </div>
           <div className="space-y-0.5">
             <div className="text-2xl font-mono font-black text-emerald-400">
-              +${totalAccruedProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              +${(Number(totalAccruedProfit) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="text-[11px] text-emerald-500/80">Compounded Daily Yields</div>
           </div>
@@ -406,7 +406,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 block">Min Deposit</span>
-                      <span className="font-mono font-bold text-slate-200">${plan.minDeposit.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-slate-200">${(Number(plan?.minDeposit) || 0).toLocaleString()}</span>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 block">Management Fee</span>

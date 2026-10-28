@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, onLog
     { id: 'support', label: 'Help and Support', icon: HelpCircle },
   ];
 
-  if (user.role === 'ADMIN') {
+  if ((user?.role || 'USER') === 'ADMIN') {
     menuItems.push({ id: 'admin', label: 'Admin Panel', icon: ShieldAlert });
   }
 
@@ -71,13 +71,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, onLog
           className="p-3 bg-[#1D2432] border border-[#2A3447] rounded-xl flex items-center space-x-3 cursor-pointer hover:border-[#D4AF37]/50 transition-all"
         >
           <div className="w-10 h-10 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] font-bold text-sm shrink-0">
-            {user.username ? user.username[0].toUpperCase() : 'V'}
+            {(user?.username || 'user') ? (user?.username || 'user')[0].toUpperCase() : 'V'}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-bold text-white truncate">{user.fullName || user.username}</div>
-            <div className="text-[10px] text-slate-400 font-mono truncate">ID: {user.accountId || 'VX-DEFAULT'}</div>
+            <div className="text-xs font-bold text-white truncate">{(user?.fullName || 'Valued User') || (user?.username || 'user')}</div>
+            <div className="text-[10px] text-slate-400 font-mono truncate">ID: {(user?.accountId || 'VX-DEFAULT') || 'VX-DEFAULT'}</div>
             <div className="text-[10px] text-emerald-400 font-semibold mt-0.5">
-              ${(user.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+              ${(Number(user?.balance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
             </div>
           </div>
         </div>

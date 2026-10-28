@@ -104,7 +104,7 @@ export const PublicWithdrawalToast: React.FC = () => {
 
           const maskedId = maskAccountId(targetTx.userId, targetUser?.accountId);
           const plan = parsePlanName(targetTx);
-          const amt = `$${targetTx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          const amt = `$${(Number(targetTx?.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
           const notification: ActiveNotification = {
             id: targetTx.id,

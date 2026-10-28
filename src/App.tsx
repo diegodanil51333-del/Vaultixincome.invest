@@ -20,7 +20,7 @@ import { InvestmentNotificationToast } from './components/InvestmentNotification
 import { PublicWithdrawalToast } from './components/PublicWithdrawalToast';
 import { AmbientBackground } from './components/AmbientBackground';
 import { Footer } from './components/Footer';
-import { LayoutDashboard, TrendingUp, Briefcase, History, Wallet as WalletIcon } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Briefcase, History, Wallet as WalletIcon, ShieldAlert } from 'lucide-react';
 
 const TAB_STORAGE_KEY = 'vaultix_current_tab_v11';
 
@@ -144,7 +144,8 @@ export function App() {
               Boolean(u?.username && sUsername && typeof u.username === 'string' && u.username.toLowerCase() === sUsername)
           );
           if (found) {
-            setCurrentUser((prev) => (prev ? { ...prev, ...found } : found));
+            const safeFound = normalizeUser(found);
+            setCurrentUser((prev) => (prev ? { ...prev, ...safeFound } : safeFound));
           }
         }
       } catch {}
@@ -206,8 +207,9 @@ export function App() {
     ) {
       freshUser.role = 'ADMIN';
     }
-    setCurrentUser(freshUser);
-    saveCurrentSession(freshUser);
+    const safeUser = normalizeUser(freshUser);
+    setCurrentUser(safeUser);
+    saveCurrentSession(safeUser);
     setShowAuthScreen(false);
 
     // Always navigate to Dashboard upon successful login
@@ -426,6 +428,18 @@ export function App() {
           <WalletIcon className="w-5 h-5 mb-0.5" />
           <span>Wallet</span>
         </button>
+
+        {currentUser?.role === 'ADMIN' && (
+          <button
+            onClick={() => setCurrentTab('admin')}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-[10px] font-semibold transition-all ${
+              currentTab === 'admin' ? 'text-purple-400 font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5 mb-0.5 text-purple-400" />
+            <span>Admin</span>
+          </button>
+        )}
       </nav>
 
       <Footer onOpenSupport={() => setCurrentTab('support')} />

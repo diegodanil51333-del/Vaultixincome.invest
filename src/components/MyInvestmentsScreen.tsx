@@ -159,7 +159,7 @@ export const MyInvestmentsScreen: React.FC<MyInvestmentsScreenProps> = ({
         <div className="bg-[#141923] border border-[#2A3447] p-4 rounded-xl space-y-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Active Capital</span>
           <div className="text-xl font-mono font-black text-white">
-            ${totalInvested.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${(Number(totalInvested) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <span className="text-[10px] text-slate-500">{activeInvestments.length} Active Positions</span>
         </div>
@@ -167,7 +167,7 @@ export const MyInvestmentsScreen: React.FC<MyInvestmentsScreenProps> = ({
         <div className="bg-[#141923] border border-[#2A3447] p-4 rounded-xl space-y-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Accrued Yields</span>
           <div className="text-xl font-mono font-black text-emerald-400">
-            +${totalAccruedProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            +${(Number(totalAccruedProfit) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <span className="text-[10px] text-emerald-500/80">Compounding Daily</span>
         </div>
@@ -183,7 +183,7 @@ export const MyInvestmentsScreen: React.FC<MyInvestmentsScreenProps> = ({
         <div className="bg-[#141923] border border-[#2A3447] p-4 rounded-xl space-y-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Available Balance</span>
           <div className="text-xl font-mono font-black text-white">
-            ${(user.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${(Number(user?.balance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <span className="text-[10px] text-slate-500">Unallocated Funds</span>
         </div>
@@ -270,7 +270,7 @@ export const MyInvestmentsScreen: React.FC<MyInvestmentsScreenProps> = ({
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Principal</span>
                       <div className="text-lg font-mono font-black text-white">
-                        ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        ${(Number(inv?.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </div>
                     </div>
                   </div>
@@ -364,7 +364,7 @@ export const MyInvestmentsScreen: React.FC<MyInvestmentsScreenProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Principal Amount:</span>
-                <span className="text-white font-mono">${withdrawInv.amount.toFixed(2)}</span>
+                <span className="text-white font-mono">${(Number(withdrawInv?.amount) || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Accrued Yields:</span>

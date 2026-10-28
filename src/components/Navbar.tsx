@@ -17,7 +17,8 @@ import {
   ShieldAlert, 
   BookOpen, 
   User as UserIcon,
-  ChevronRight
+  ChevronRight,
+  Download
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -56,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'support', label: 'Help and Support', icon: HelpCircle },
   ];
 
-  if (user.role === 'ADMIN') {
+  if ((user?.role || 'USER') === 'ADMIN') {
     menuItems.push({ id: 'admin', label: 'Admin Panel', icon: ShieldAlert });
   }
 
@@ -115,6 +116,36 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
+          {/* Admin Quick Action Button */}
+          {user?.role === 'ADMIN' && (
+            <button
+              type="button"
+              onClick={() => onSelectTab('admin')}
+              className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm ${
+                currentTab === 'admin'
+                  ? 'bg-purple-600 text-white border-purple-400'
+                  : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/35 border-purple-500/50'
+              }`}
+              title="Open Administrator Control Center"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
+              <span className="hidden sm:inline">Admin Panel</span>
+            </button>
+          )}
+
+          {/* Direct Download ZIP Button */}
+          {user?.role === 'ADMIN' && (
+            <a
+              href="/vaultixincome-latest-c30b8f9.zip"
+              download="vaultixincome-latest-c30b8f9.zip"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-bold transition-all shadow-sm"
+              title="Download project ZIP package (commit c30b8f9)"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Export ZIP</span>
+            </a>
+          )}
+
           {/* User Profile Mini Badge */}
           <button
             type="button"
@@ -123,17 +154,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="View Profile Details"
           >
             <div className="w-6 h-6 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] text-xs font-bold shrink-0">
-              {user.username ? user.username[0].toUpperCase() : 'U'}
+              {(user?.username || 'user') ? (user?.username || 'user')[0].toUpperCase() : 'U'}
             </div>
             <span className="text-xs font-bold text-white truncate max-w-[100px] sm:max-w-[130px]">
-              @{user.username}
+              @{(user?.username || 'user')}
             </span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full hidden sm:inline-block ${
-              user.role === 'ADMIN'
+              (user?.role || 'USER') === 'ADMIN'
                 ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                 : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
             }`}>
-              {user.role}
+              {(user?.role || 'USER')}
             </span>
           </button>
 
@@ -185,13 +216,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="p-3 bg-[#1D2432] border border-[#2A3447] rounded-xl flex items-center space-x-3 cursor-pointer hover:border-[#D4AF37]/50"
               >
                 <div className="w-10 h-10 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] font-bold text-sm shrink-0">
-                  {user.username ? user.username[0].toUpperCase() : 'V'}
+                  {(user?.username || 'user') ? (user?.username || 'user')[0].toUpperCase() : 'V'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-white truncate">{user.fullName || user.username}</div>
-                  <div className="text-[10px] text-slate-400 font-mono truncate">ID: {user.accountId || 'VX-DEFAULT'}</div>
+                  <div className="text-xs font-bold text-white truncate">{(user?.fullName || 'Valued User') || (user?.username || 'user')}</div>
+                  <div className="text-[10px] text-slate-400 font-mono truncate">ID: {(user?.accountId || 'VX-DEFAULT') || 'VX-DEFAULT'}</div>
                   <div className="text-[10px] text-emerald-400 font-semibold mt-0.5">
-                    Balance: ${(user.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    Balance: ${(Number(user?.balance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>

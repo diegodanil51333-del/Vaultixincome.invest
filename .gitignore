@@ -1,15 +1,23 @@
-/node_modules
-/dist
-/.build-outputs
+/node_modules/
+dist/
+.build-outputs
 debug.keystore.base64
-app/applet
-/build
-/.gradle
-/.kotlin
-/local.properties
+app/applet/build/
+.gradle/
+.kotlin/
+local.properties
 .DS_Store
 *.iml
 .idea/
 .aistudio
 firebase-debug.log
 .authoritative_store.json
+
+# Ignore large media attachments uploaded in chat turns (144MB of MP4s)
+public/assets/aistudio/*.mp4
+*.mp4
+
+# Ignore zip archives from exports
+*.zip
+public/*.zip
+codelab_bundle/

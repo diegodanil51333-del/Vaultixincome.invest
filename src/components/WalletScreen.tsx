@@ -154,7 +154,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ user, onUserUpdated 
       return;
     }
 
-    if (amount > user.balance) {
+    if (amount > (Number(user?.balance) || 0)) {
       setWError(`Insufficient funds. Your available balance is $${(Number(user?.balance) || 0).toFixed(2)}.`);
       isSubmittingWithRef.current = false;
       setIsSubmittingWith(false);
@@ -343,7 +343,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ user, onUserUpdated 
                   {parseFloat(depositAmount) > 0 && (
                     <div className="mt-1.5 text-[11px] font-mono text-[#D4AF37] flex items-center justify-between bg-[#0B0E14]/80 px-2 py-1 rounded-lg border border-[#2A3447]/60">
                       <span>Est. USD Value:</span>
-                      <span className="font-bold">≈ ${estimatedUsdValuation.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                      <span className="font-bold">≈ ${(Number(estimatedUsdValuation) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
                     </div>
                   )}
                 </div>
@@ -582,7 +582,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ user, onUserUpdated 
                     {tx.txHash && <span>• Hash: {tx.txHash.slice(0, 10)}...</span>}
                     {tx.priceUsed && tx.cryptoAsset && tx.cryptoAsset !== 'USD' && tx.cryptoAsset !== 'USDT' && (
                       <span className="text-[#D4AF37]">
-                        • Price Used: ${tx.priceUsed.toLocaleString()}
+                        • Price Used: ${(Number(tx?.priceUsed) || 0).toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -591,7 +591,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ user, onUserUpdated 
                 <div className="text-right flex items-center space-x-3 shrink-0">
                   <div>
                     <div className={`font-bold ${tx.type === 'WITHDRAWAL' || tx.type === 'BONUS_WITHDRAWAL' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {tx.type === 'WITHDRAWAL' || tx.type === 'BONUS_WITHDRAWAL' ? '-' : '+'}${tx.amount.toFixed(2)} {tx.currency || 'USD'}
+                      {tx.type === 'WITHDRAWAL' || tx.type === 'BONUS_WITHDRAWAL' ? '-' : '+'}${(Number(tx?.amount) || 0).toFixed(2)} {tx.currency || 'USD'}
                       {tx.cryptoAmount && tx.cryptoAsset && tx.cryptoAsset !== 'USD' && tx.cryptoAsset !== 'USDT' && (
                         <span className="text-[10px] text-slate-400 block font-mono">
                           ({tx.cryptoAmount} {tx.cryptoAsset})

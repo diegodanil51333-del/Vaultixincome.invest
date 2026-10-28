@@ -137,7 +137,7 @@ export const TransactionReceiptModal: React.FC<TransactionReceiptModalProps> = (
         <div className="bg-[#1D2432] border border-[#2A3447] rounded-2xl p-5 text-center space-y-1">
           <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{formattedType()}</div>
           <div className={`text-2xl sm:text-3xl font-black ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {isPositive ? '+' : '-'}${transaction.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {transaction.currency || 'USD'}
+            {isPositive ? '+' : '-'}${(Number(transaction?.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {transaction.currency || 'USD'}
           </div>
           <div className="pt-2 flex justify-center">{getStatusBadge()}</div>
         </div>

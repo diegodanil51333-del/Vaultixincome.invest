@@ -288,7 +288,7 @@ export const TransactionsScreen: React.FC<TransactionsScreenProps> = ({
 
                       <td className="py-3.5 px-4 font-mono font-bold">
                         <span className={isPositive ? 'text-emerald-400' : 'text-slate-200'}>
-                          {isPositive ? '+' : '-'}${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {isPositive ? '+' : '-'}${(Number(tx?.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <div className="text-[10px] text-slate-500 font-sans font-normal">
                           {tx.cryptoAmount && tx.cryptoAsset ? `${tx.cryptoAmount} ${tx.cryptoAsset}` : tx.currency}

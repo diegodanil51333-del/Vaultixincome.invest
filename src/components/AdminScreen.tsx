@@ -10,7 +10,8 @@ import { db, collection, onSnapshot } from '../firebase';
 import { cryptoPriceService } from '../services/cryptoPriceService';
 import {
   ShieldAlert, Search, CheckCircle, AlertCircle, X, DollarSign, Wallet, ArrowUpRight,
-  Layers, Sliders, Activity, RefreshCw, Copy, Check, TrendingUp
+  Layers, Sliders, Activity, RefreshCw, Copy, Check, TrendingUp,
+  Download
 } from 'lucide-react';
 import { TransactionReceiptModal } from './TransactionReceiptModal';
 
@@ -310,8 +311,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
     const allUsers = getUsers();
     const idx = allUsers.findIndex((u) => u.userId === selectedUser.userId);
     if (idx !== -1) {
-      const oldBal = allUsers[idx].balance;
-      allUsers[idx].balance += amt;
+      const oldBal = Number(allUsers[idx]?.balance) || 0;
+      allUsers[idx].balance = oldBal + amt;
       saveUsers(allUsers);
 
       const logs = getAuditLogs();
@@ -322,7 +323,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
         targetUserId: selectedUser.userId,
         targetUsername: selectedUser.username,
         previousValue: `$${oldBal.toFixed(2)}`,
-        newValue: `$${allUsers[idx].balance.toFixed(2)}`,
+        newValue: `${(Number(allUsers[idx]?.balance) || 0).toFixed(2)}`,
         reason: adjustNote || 'Manual Balance Adjustment',
         timestamp: new Date().toISOString()
       });
@@ -533,7 +534,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
 
                   <div className="flex items-center space-x-2">
                     <div className="text-right mr-2">
-                      <div className="text-xs font-bold text-[#D4AF37]">${u.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-xs font-bold text-[#D4AF37]">${(Number(u?.balance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       <div className="text-[10px] text-slate-400">Balance</div>
                     </div>
 
@@ -595,7 +596,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
                           <span>Deposit: <strong className="text-emerald-400 font-mono">{tx.cryptoAmount || tx.amount} {tx.currency}</strong></span>
                           {tx.usdValuation && tx.currency !== 'USD' && tx.currency !== 'USDT' && (
                             <span className="text-[#D4AF37] font-mono font-bold">
-                              (USD Equivalent: ${tx.usdValuation.toFixed(2)} USD • Price: ${tx.priceUsed?.toLocaleString()} USD)
+                              (USD Equivalent: ${(Number(tx.usdValuation) || 0).toFixed(2)} USD • Price: ${tx.priceUsed?.toLocaleString()} USD)
                             </span>
                           )}
                           <span className="text-slate-500">• Submitted: {new Date(tx.timestamp).toLocaleString()}</span>
@@ -765,7 +766,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#0B0E14] border border-[#2A3447] rounded-xl p-2.5 text-xs">
                             <div>
                               <span className="text-[10px] text-slate-400 block uppercase">Requested Amount</span>
-                              <span className="font-extrabold text-white">${tx.amount.toFixed(2)} {tx.currency}</span>
+                              <span className="font-extrabold text-white">${(Number(tx.amount) || 0).toFixed(2)} {tx.currency}</span>
                             </div>
                             <div>
                               <span className="text-[10px] text-slate-400 block uppercase">Fixed Fee</span>
@@ -929,15 +930,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-[#0B0E14] border border-[#2A3447] rounded-xl p-2.5 text-xs mt-1">
                         <div>
                           <span className="text-[10px] text-slate-400 block uppercase">Principal Invested</span>
-                          <span className="font-extrabold text-white">${inv.amount.toLocaleString()}</span>
+                          <span className="font-extrabold text-white">${(Number(inv?.amount) || 0).toLocaleString()}</span>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 block uppercase">Daily Return</span>
-                          <span className="font-bold text-emerald-400 font-mono">+${inv.dailyReturn.toFixed(2)}/day</span>
+                          <span className="font-bold text-emerald-400 font-mono">+${(Number(inv?.dailyReturn) || 0).toFixed(2)}/day</span>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 block uppercase">Accrued Yield</span>
-                          <span className="font-bold text-[#D4AF37] font-mono">+${accrued.toFixed(2)}</span>
+                          <span className="font-bold text-[#D4AF37] font-mono">+${(Number(accrued) || 0).toFixed(2)}</span>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 block uppercase">Lock Duration</span>
@@ -1021,7 +1022,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
 
                       <div className="text-right shrink-0">
                         <div className={`font-extrabold text-sm ${tx.type === 'WITHDRAWAL' || tx.type === 'ADMIN_DEBIT' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          {tx.type === 'WITHDRAWAL' || tx.type === 'ADMIN_DEBIT' ? '-' : '+'}${tx.amount.toFixed(2)} {tx.currency || 'USD'}
+                          {tx.type === 'WITHDRAWAL' || tx.type === 'ADMIN_DEBIT' ? '-' : '+'}${(Number(tx.amount) || 0).toFixed(2)} {tx.currency || 'USD'}
                         </div>
                         <span className="text-[10px] text-purple-400 font-bold block">Click to view receipt</span>
                       </div>
@@ -1304,8 +1305,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
               <div className="flex justify-between"><span className="text-slate-400">User ID:</span><span className="font-mono text-slate-300">{selectedUser.userId}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Registration Date:</span><span className="text-slate-300">{new Date(selectedUser.createdAt).toLocaleDateString()}</span></div>
               <div className="flex justify-between"><span className="text-slate-400">Account Status:</span><span className="font-bold text-emerald-400">{selectedUser.accountStatus}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Main Balance:</span><span className="font-extrabold text-[#D4AF37]">${selectedUser.balance.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Referral Earnings:</span><span className="font-bold text-emerald-400">${selectedUser.referralEarnings.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Main Balance:</span><span className="font-extrabold text-[#D4AF37]">${(Number(selectedUser?.balance) || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Referral Earnings:</span><span className="font-bold text-emerald-400">${(Number(selectedUser?.referralEarnings) || 0).toFixed(2)}</span></div>
             </div>
 
             {/* Adjust Balance Form */}
