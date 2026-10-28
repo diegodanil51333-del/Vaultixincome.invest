@@ -18,6 +18,7 @@ import { AdminScreen } from './components/AdminScreen';
 import { InvestmentGuideModal } from './components/InvestmentGuideModal';
 import { InvestmentNotificationToast } from './components/InvestmentNotificationToast';
 import { PublicWithdrawalToast } from './components/PublicWithdrawalToast';
+import { GlobalToastContainer } from './components/GlobalToastContainer';
 import { AmbientBackground } from './components/AmbientBackground';
 import { Footer } from './components/Footer';
 import { LayoutDashboard, TrendingUp, Briefcase, History, Wallet as WalletIcon, ShieldAlert } from 'lucide-react';
@@ -264,6 +265,7 @@ export function App() {
       <AmbientBackground />
       <PublicWithdrawalToast />
       <InvestmentNotificationToast />
+      <GlobalToastContainer />
 
       {/* Primary Dashboard Navbar with 3-line hamburger menu */}
       <Navbar 

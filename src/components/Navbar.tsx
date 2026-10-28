@@ -153,8 +153,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center space-x-2 bg-[#1D2432] hover:bg-[#2A3447] px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#2A3447] transition-all cursor-pointer"
             title="View Profile Details"
           >
-            <div className="w-6 h-6 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] text-xs font-bold shrink-0">
-              {(user?.username || 'user') ? (user?.username || 'user')[0].toUpperCase() : 'U'}
+            <div className="w-6 h-6 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] text-xs font-bold shrink-0 overflow-hidden">
+              {(user?.photoURL || user?.avatarUrl) ? (
+                <img src={user.photoURL || user.avatarUrl} alt={user?.username || "user"} className="w-full h-full object-cover" />
+              ) : (
+                (user?.username || "user") ? (user?.username || "user")[0].toUpperCase() : "U"
+              )}
             </div>
             <span className="text-xs font-bold text-white truncate max-w-[100px] sm:max-w-[130px]">
               @{(user?.username || 'user')}
@@ -164,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                 : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
             }`}>
-              {(user?.role || 'USER')}
+              {(user?.role || 'USER') === 'ADMIN' ? 'ADMIN' : 'Verified Investor'}
             </span>
           </button>
 
@@ -215,8 +219,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => handleNavClick('profile')}
                 className="p-3 bg-[#1D2432] border border-[#2A3447] rounded-xl flex items-center space-x-3 cursor-pointer hover:border-[#D4AF37]/50"
               >
-                <div className="w-10 h-10 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] font-bold text-sm shrink-0">
-                  {(user?.username || 'user') ? (user?.username || 'user')[0].toUpperCase() : 'V'}
+                <div className="w-10 h-10 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] font-bold text-sm shrink-0 overflow-hidden shadow-inner">
+                  {(user?.photoURL || user?.avatarUrl) ? (
+                    <img src={user.photoURL || user.avatarUrl} alt={user?.username || "user"} className="w-full h-full object-cover" />
+                  ) : (
+                    (user?.username || "user") ? (user?.username || "user")[0].toUpperCase() : "V"
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-bold text-white truncate">{(user?.fullName || 'Valued User') || (user?.username || 'user')}</div>

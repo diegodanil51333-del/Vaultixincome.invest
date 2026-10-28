@@ -1,3 +1,4 @@
+import { showToast } from '../services/toastService';
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Transaction, CryptoWalletConfig } from '../types';
 import { getWallets, submitDeposit, submitWithdrawalRequest, submitBonusWithdrawalRequest, calculateWithdrawalFee, getUsers, saveUsers, getTransactions, saveTransactions, saveCurrentSession, cancelOwnPendingDeposit } from '../db';
@@ -91,6 +92,11 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ user, onUserUpdated 
     if (selectedWallet) {
       navigator.clipboard.writeText(selectedWallet.address);
       setCopiedAddress(true);
+      showToast({
+        type: 'copy',
+        title: `${selectedWallet.name} Address Copied`,
+        message: `${selectedWallet.address.slice(0, 14)}... (Network: ${selectedWallet.network})`
+      });
       setTimeout(() => setCopiedAddress(false), 2000);
     }
   };

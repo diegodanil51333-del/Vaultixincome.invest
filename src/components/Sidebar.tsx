@@ -70,8 +70,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab, onLog
           onClick={() => onSelectTab('profile')}
           className="p-3 bg-[#1D2432] border border-[#2A3447] rounded-xl flex items-center space-x-3 cursor-pointer hover:border-[#D4AF37]/50 transition-all"
         >
-          <div className="w-10 h-10 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] font-bold text-sm shrink-0">
-            {(user?.username || 'user') ? (user?.username || 'user')[0].toUpperCase() : 'V'}
+          <div className="w-10 h-10 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] font-bold text-sm shrink-0 overflow-hidden shadow-inner">
+            {(user?.photoURL || user?.avatarUrl) ? (
+              <img src={user.photoURL || user.avatarUrl} alt={user?.username || "user"} className="w-full h-full object-cover" />
+            ) : (
+              (user?.username || "user") ? (user?.username || "user")[0].toUpperCase() : "V"
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-xs font-bold text-white truncate">{(user?.fullName || 'Valued User') || (user?.username || 'user')}</div>

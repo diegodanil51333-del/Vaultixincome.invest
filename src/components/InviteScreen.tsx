@@ -1,3 +1,4 @@
+import { showToast } from '../services/toastService';
 import React, { useState, useEffect } from 'react';
 import { User, Invitation } from '../types';
 import { getUsers, getInvitations, saveInvitations, saveUsers, saveCurrentSession, getReferralConfig, withdrawReferralEarnings, submitBonusWithdrawalRequest } from '../db';
@@ -76,6 +77,11 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink);
     setCopiedLink(true);
+    showToast({
+      type: 'copy',
+      title: 'Referral Link Copied',
+      message: 'Share with partners to earn commissions on active vaults.'
+    });
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
