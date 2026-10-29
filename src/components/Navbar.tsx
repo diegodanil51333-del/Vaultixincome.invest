@@ -92,8 +92,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full border border-[#D4AF37]/50 object-cover shadow-sm shrink-0" 
             />
             <div className="shrink-0 flex flex-col justify-center leading-none">
-              {/* Responsive brand name: stacked on sub-400px mobile for 100% zero-clipping guarantee, single-line on 400px+ */}
-              <div className="min-[400px]:hidden flex flex-col leading-tight">
+              {/* Responsive brand name: stacked on mobile viewports for 100% zero-clipping guarantee (matching IMG_3547), single-line on sm+ screens */}
+              <div className="flex sm:hidden flex-col leading-tight">
                 <span className="text-[11px] font-black text-[#D4AF37] tracking-wider leading-tight whitespace-nowrap">
                   VAULTIX
                 </span>
@@ -101,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   INCOME
                 </span>
               </div>
-              <h1 className="hidden min-[400px]:block text-[13px] sm:text-base font-black text-[#D4AF37] tracking-tight min-[440px]:tracking-normal sm:tracking-wider leading-none whitespace-nowrap shrink-0">
+              <h1 className="hidden sm:block text-sm md:text-base font-black text-[#D4AF37] tracking-wider leading-none whitespace-nowrap shrink-0">
                 VAULTIX INCOME
               </h1>
               <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium hidden md:block whitespace-nowrap mt-0.5">Digital Wealth Management</span>

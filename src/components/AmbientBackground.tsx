@@ -13,7 +13,8 @@ export const AmbientBackground: React.FC = () => {
   return (
     <div 
       id="vaultix-ambient-bg"
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none bg-[#0B0E14]"
+      className="fixed inset-0 pointer-events-none -z-10 overflow-hidden select-none"
+      style={{ zIndex: -1 }}
       aria-hidden="true"
     >
       {/* 1. Refined Institutional Mesh Gradients & Atmospheric Aura */}

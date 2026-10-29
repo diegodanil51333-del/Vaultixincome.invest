@@ -52,7 +52,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({ onLearnMore }) => {
   ];
 
   return (
-    <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 sm:p-8 space-y-6">
+    <div className="relative z-10 bg-[#141923] border border-[#2A3447] rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-bold text-[#D4AF37] uppercase tracking-wider block">Simplified 7-Step Process</span>

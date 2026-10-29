@@ -141,7 +141,7 @@ export const MarketTracker: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-5 space-y-4 shadow-xl">
+    <div className="relative z-10 bg-[#141923] border border-[#2A3447] rounded-2xl p-5 space-y-4 shadow-xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-2">
           <BarChart2 className="w-5 h-5 text-[#D4AF37]" />
