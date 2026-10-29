@@ -83,25 +83,25 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Logo & Platform Name */}
           <div 
-            className="flex items-center space-x-2.5 cursor-pointer" 
+            className="flex items-center space-x-2.5 cursor-pointer shrink-0" 
             onClick={() => onSelectTab('dashboard')}
           >
             <img 
               src="/logo.jpg" 
               alt="Vaultix Income" 
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#D4AF37]/50 object-cover shadow-sm" 
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#D4AF37]/50 object-cover shadow-sm shrink-0" 
             />
-            <div>
-              <h1 className="text-sm sm:text-base font-black text-[#D4AF37] tracking-wider leading-none">
+            <div className="shrink-0">
+              <h1 className="text-sm sm:text-base font-black text-[#D4AF37] tracking-wider leading-none whitespace-nowrap">
                 VAULTIX INCOME
               </h1>
-              <span className="text-[10px] text-slate-400 font-medium hidden sm:block">Digital Wealth Management</span>
+              <span className="text-[10px] text-slate-400 font-medium hidden sm:block whitespace-nowrap">Digital Wealth Management</span>
             </div>
           </div>
         </div>
 
         {/* Right: Investment Guide, User Profile Badge, Logout */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           {/* Investment Guide Button */}
           {onOpenGuide && (
             <button
@@ -115,12 +115,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Admin Quick Action Button */}
+          {/* Admin Quick Action Button (Desktop & Tablet only; mobile uses drawer & bottom nav) */}
           {user?.role === 'ADMIN' && (
             <button
               type="button"
               onClick={() => onSelectTab('admin')}
-              className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm ${
+              className={`hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm ${
                 currentTab === 'admin'
                   ? 'bg-purple-600 text-white border-purple-400'
                   : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/35 border-purple-500/50'
@@ -128,7 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Open Administrator Control Center"
             >
               <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden sm:inline">Admin Panel</span>
+              <span>Admin Panel</span>
             </button>
           )}
 

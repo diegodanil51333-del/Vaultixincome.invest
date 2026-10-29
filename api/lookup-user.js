@@ -157,6 +157,18 @@ var AuthoritativeStore = class {
         break;
       }
     }
+    if (!foundUser && normalizedCode.startsWith("VXREF-")) {
+      const candidateUser = trimmed.replace(/^VXREF-/i, "").trim();
+      if (candidateUser && candidateUser.length >= 2 && candidateUser.toLowerCase() !== cleanUsername && candidateUser.toLowerCase() !== cleanEmail) {
+        foundUser = {
+          userId: "USR-" + candidateUser,
+          username: candidateUser,
+          fullName: candidateUser,
+          referralCode: "VXREF-" + candidateUser
+        };
+      }
+    }
+
     if (!foundUser) {
       return {
         valid: false,

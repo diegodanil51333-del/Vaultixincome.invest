@@ -26,6 +26,10 @@ export function normalizeUser(rawUser: any): User {
     : (email ? email.split("@")[0] : "investor");
   const isAdmin = email.toLowerCase() === "vaultixincometeam@outlook.com" || rawUser.role === "ADMIN";
 
+  const formattedRefCode = (rawUser.referralCode && !rawUser.referralCode.match(/^VXREF-\d{4}$/))
+    ? rawUser.referralCode
+    : (username ? `VXREF-${username}` : `VXREF-INVESTOR`);
+
   return {
     userId: rawUser.userId || `USR-${Math.floor(100000 + Math.random() * 900000)}`,
     accountId: rawUser.accountId || `VX-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -40,7 +44,7 @@ export function normalizeUser(rawUser: any): User {
     totalDeposits: typeof rawUser.totalDeposits === "number" && !isNaN(rawUser.totalDeposits) ? Math.max(0, rawUser.totalDeposits) : (Number(rawUser.totalDeposits) || 0.0),
     totalInvestments: typeof rawUser.totalInvestments === "number" && !isNaN(rawUser.totalInvestments) ? Math.max(0, rawUser.totalInvestments) : (Number(rawUser.totalInvestments) || 0.0),
     totalProfitLoss: typeof rawUser.totalProfitLoss === "number" && !isNaN(rawUser.totalProfitLoss) ? rawUser.totalProfitLoss : (Number(rawUser.totalProfitLoss) || 0.0),
-    referralCode: rawUser.referralCode || `VXREF-${Math.floor(1000 + Math.random() * 9000)}`,
+    referralCode: formattedRefCode,
     referredBy: rawUser.referredBy,
     referredByUsername: rawUser.referredByUsername,
     referredByDisplayName: rawUser.referredByDisplayName,

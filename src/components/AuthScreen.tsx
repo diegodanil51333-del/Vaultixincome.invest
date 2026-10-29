@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Transaction } from '../types';
+import { validateReferralCodeAsync, generateReferralCode, awardRegistrationBonuses, extractReferralCodeFromUrl } from '../services/referralService';
 import { getUsers, saveUsers, saveCurrentSession, getTransactions, saveTransactions, processRegistrationBonuses, normalizeUser } from '../db';
 import { auth, db, doc, setDoc, getDoc, collection, getDocs, query, where, isFirebaseConfigured, cleanFirestoreData } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User as FirebaseUser } from 'firebase/auth';
@@ -353,12 +354,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
     setError(null);
     setMessage(null);
 
-    if (!username.trim() || !fullName.trim() || !email.trim() || !password || !passwordConfirm) {
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanFullName = fullName.trim();
+
+    if (!cleanUsername || !cleanFullName || !cleanEmail || !password || !passwordConfirm) {
       setError('All required registration fields must be completed.');
       return;
     }
 
-    if (!email.includes('@') || !email.includes('.')) {
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
       setError('Please enter a valid email address.');
       return;
     }
@@ -373,109 +378,77 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       return;
     }
 
-    const users = getUsers();
-
-    if (users.some((u) => Boolean(u?.username && typeof u.username === 'string' && u.username.toLowerCase() === username.trim().toLowerCase()))) {
-      setError('Username is already taken by another user.');
+    // 1. Strict Username and Email Uniqueness Pre-check (Local)
+    const localUsers = getUsers();
+    if (localUsers.some((u) => u?.username && u.username.toLowerCase() === cleanUsername.toLowerCase())) {
+      setError('This username is already taken. Please choose another username.');
       return;
     }
 
-    if (users.some((u) => Boolean(u?.email && typeof u.email === 'string' && u.email.toLowerCase() === email.trim().toLowerCase()))) {
-      setError('Email address is already registered.');
+    if (localUsers.some((u) => u?.email && u.email.toLowerCase() === cleanEmail)) {
+      setError('An account with this email already exists. Please sign in or use a different email.');
       return;
     }
 
+    // 2. Strict Username and Email Uniqueness Pre-check (Firestore)
+    try {
+      const usersCol = collection(db, 'users');
+      const uSnap = await getDocs(query(usersCol, where('username', '==', cleanUsername)));
+      if (!uSnap.empty) {
+        setError('This username is already taken. Please choose another username.');
+        return;
+      }
+
+      const eSnap = await getDocs(query(usersCol, where('email', '==', cleanEmail)));
+      if (!eSnap.empty) {
+        setError('An account with this email already exists. Please sign in or use a different email.');
+        return;
+      }
+    } catch (fsErr) {
+      console.warn('Firestore uniqueness pre-check notice:', fsErr);
+    }
+
+    // 3. Referral Code Validation
+    let referrerUser: User | undefined = undefined;
     let referrerUsername: string | undefined = undefined;
     let referrerDisplayName: string | undefined = undefined;
-    let referrerUser: any | undefined = undefined;
 
     if (referralCodeInput.trim()) {
-      const codeClean = referralCodeInput.trim().toUpperCase();
+      const valResult = await validateReferralCodeAsync(
+        referralCodeInput.trim(),
+        cleanUsername,
+        cleanEmail
+      );
 
-      // Check self-referral against registration inputs
-      if (
-        codeClean === username.trim().toUpperCase() ||
-        codeClean === email.trim().toLowerCase() ||
-        codeClean === email.trim().toUpperCase()
-      ) {
-        setError('You cannot refer yourself. Please enter a valid referral code or leave the field blank.');
+      if (!valResult.valid) {
+        setError(valResult.error || `Invalid referral code "${referralCodeInput.trim()}" provided.`);
         return;
       }
 
-      // Backend validation via /api/validate-referral
-      try {
-        const valRes = await fetch('/api/validate-referral', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            referralCode: referralCodeInput.trim(),
-            currentUsername: username.trim(),
-            currentEmail: email.trim().toLowerCase()
-          })
-        });
-
-        const valData = await valRes.json();
-        if (!valRes.ok || !valData.valid) {
-          setError(valData.error || `Invalid referral code "${referralCodeInput.trim()}" provided.`);
-          return;
-        }
-
-        if (valData.referrer) {
-          referrerUser = valData.referrer;
-          referrerUsername = valData.referrer.username;
-          referrerDisplayName = valData.referrer.fullName || valData.referrer.username;
-        }
-      } catch {
-        // Local fallback check
-        const localUsers = getUsers();
-        referrerUser = localUsers.find(
-          (u) =>
-            u?.referralCode?.trim().toUpperCase() === codeClean ||
-            u?.username?.trim().toUpperCase() === codeClean
-        );
-
-        if (!referrerUser && codeClean === 'VXREF-ADMIN') {
-          referrerUser = localUsers.find((u) => u?.role === 'ADMIN');
-        }
-
-        if (referrerUser) {
-          const rUsername = referrerUser?.username && typeof referrerUser.username === 'string' ? referrerUser.username.toLowerCase() : '';
-          const rEmail = referrerUser?.email && typeof referrerUser.email === 'string' ? referrerUser.email.toLowerCase() : '';
-
-          if (
-            (rUsername && rUsername === username.trim().toLowerCase()) ||
-            (rEmail && rEmail === email.trim().toLowerCase())
-          ) {
-            setError('You cannot refer yourself. Please enter a valid referral code or leave the field blank.');
-            return;
-          }
-          referrerUsername = referrerUser.username;
-          referrerDisplayName = referrerUser.fullName || referrerUser.username;
-        } else {
-          setError(`Invalid referral code "${referralCodeInput.trim()}" provided.`);
-          return;
-        }
+      if (valResult.referrer) {
+        referrerUser = valResult.referrer;
+        referrerUsername = valResult.referrer.username;
+        referrerDisplayName = valResult.referrer.fullName || valResult.referrer.username;
       }
     }
 
-    let uid = '';
+    setIsSubmitting(true);
+
+    // 4. Firebase Authentication Account Creation
+    let uid = `USR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       uid = userCredential.user.uid;
     } catch (authErr: any) {
-      if (authErr.code === 'auth/email-already-in-use') {
-        try {
-          const signCred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-          uid = signCred.user.uid;
-        } catch {
-          setError('This email address is already registered. Please log in to your account.');
-          return;
-        }
-      } else if (authErr.code === 'auth/weak-password') {
-        setError('Password should be at least 6 characters.');
+      setIsSubmitting(false);
+      if (authErr?.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please sign in or use a different email.');
         return;
-      } else if (authErr.code === 'auth/invalid-email') {
+      } else if (authErr?.code === 'auth/invalid-email') {
         setError('Please enter a valid email address.');
+        return;
+      } else if (authErr?.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters long.');
         return;
       } else {
         console.error('Registration auth error:', authErr);
@@ -484,13 +457,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       }
     }
 
-    // Construct secure default user document (strictly 0 balances, NO password fields)
+    // 5. Construct secure user document with VXREF-[Username] format
     const newUser: User = {
       userId: uid,
       accountId: `VX-${Math.floor(100000 + Math.random() * 900000)}`,
-      username: username.trim(),
-      fullName: fullName.trim(),
-      email: email.trim(),
+      username: cleanUsername,
+      fullName: cleanFullName,
+      email: cleanEmail,
       role: 'USER',
       accountStatus: 'ACTIVE',
       balance: 0.0,
@@ -499,7 +472,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       totalDeposits: 0.0,
       totalInvestments: 0.0,
       totalProfitLoss: 0.0,
-      referralCode: `VXREF-${Math.floor(1000 + Math.random() * 9000)}`,
+      referralCode: generateReferralCode(cleanUsername),
       createdAt: new Date().toISOString()
     };
 
@@ -516,70 +489,31 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       newUser.referredByDisplayName = referrerDisplayName;
     }
 
-
-    // Direct Awaited Firestore Document Creation with Real-Time Diagnostics
+    // Direct Firestore Document Creation
     const cleanedUserData = cleanFirestoreData(newUser);
-    const authCurrentUid = auth.currentUser?.uid || '';
-
-    const ruleEvaluationDiagnostics = {
-      timestamp: new Date().toISOString(),
-      authCurrentUid,
-      newUserUserId: newUser.userId,
-      uidMatchesUserId: authCurrentUid === newUser.userId,
-      targetDocumentPath: `users/${newUser.userId}`,
-      userObjectPayload: cleanedUserData,
-      ruleChecks: {
-        isAuthenticated: Boolean(auth.currentUser),
-        isOwnerOfPath: authCurrentUid === newUser.userId,
-        userIdMatchesDocument: cleanedUserData.userId === newUser.userId,
-        roleIsUser: cleanedUserData.role === 'USER',
-        accountStatusIsActive: cleanedUserData.accountStatus === 'ACTIVE',
-        balanceZero: cleanedUserData.balance === 0,
-        totalDepositsZero: cleanedUserData.totalDeposits === 0,
-        totalInvestmentsZero: cleanedUserData.totalInvestments === 0,
-        totalProfitLossZero: cleanedUserData.totalProfitLoss === 0,
-        referralEarningsZero: cleanedUserData.referralEarnings === 0,
-        bonusBalanceZero: !cleanedUserData.bonusBalance || cleanedUserData.bonusBalance === 0,
-        noPasswordHash: !('passwordHash' in cleanedUserData),
-        noPassword: !('password' in cleanedUserData)
-      }
-    };
-
-    console.group('🔍 [VAULTIX REGISTRATION DIAGNOSTIC] Firestore Rule Evaluation');
-    console.log('Firebase Auth UID:', authCurrentUid);
-    console.log('New User ID:', newUser.userId);
-    console.log('Document Path:', `users/${newUser.userId}`);
-    console.log('Payload Data Structure:', cleanedUserData);
-    console.table(ruleEvaluationDiagnostics.ruleChecks);
-    console.groupEnd();
-
     try {
       await setDoc(doc(db, 'users', newUser.userId), cleanedUserData);
-      console.log('✅ [VAULTIX REGISTRATION] Document successfully written to Firestore:', `users/${newUser.userId}`);
     } catch (fsErr: any) {
-      console.error('❌ [VAULTIX REGISTRATION ERROR] Firestore rejected document write:', fsErr);
-      setError('Registration could not be completed at this time. Please check your connection and try again.');
-      return;
+      console.error('Firestore user profile write error:', fsErr);
     }
 
-    // Process welcome bonus & referral reward atomically and idempotently
-    const bonusResult = processRegistrationBonuses(newUser, referrerUser);
-    const finalUser = bonusResult.newUser;
+    // 6. Process welcome bonus & referral reward atomically
+    let finalUser = newUser;
+    if (referrerUser) {
+      const bonusResult = await awardRegistrationBonuses(newUser, referrerUser);
+      finalUser = bonusResult.updatedNewUser;
+    } else {
+      const currentList = getUsers();
+      currentList.push(finalUser);
+      saveUsers(currentList);
+    }
 
-    // Best-effort backend authoritative store sync
+    // Clear saved referral parameter
     try {
-      fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user: finalUser,
-          referralCode: referralCodeInput.trim()
-        })
-      }).catch(() => {});
-    } catch {
-      // Ignored in offline mode
-    }
+      sessionStorage.removeItem('vaultix_captured_referral');
+    } catch {}
 
+    setIsSubmitting(false);
     setMessage('Your account has been created successfully. Welcome to Vaultix Income!');
 
     setTimeout(() => {

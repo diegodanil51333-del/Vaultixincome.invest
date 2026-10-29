@@ -52,50 +52,6 @@ export const AmbientBackground: React.FC = () => {
         />
       </svg>
 
-      {/* 3. Elegantly Animated Floating Cryptocurrency Badges (Desktop, Tablet & Mobile) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Bitcoin (BTC) - Upper Left */}
-        <div className="absolute top-[8%] left-[2%] sm:left-[4%] lg:left-[5%] flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-[#141923]/75 border border-[#2A3447]/60 shadow-lg shadow-black/40 backdrop-blur-sm animate-float-1">
-          <BitcoinLogo className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-md" />
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-amber-300/90 tracking-wider">BTC</span>
-        </div>
-
-        {/* Ethereum (ETH) - Upper Right */}
-        <div className="absolute top-[14%] right-[2%] sm:right-[4%] lg:right-[6%] flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-[#141923]/75 border border-[#2A3447]/60 shadow-lg shadow-black/40 backdrop-blur-sm animate-float-2">
-          <EthereumLogo className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-md" />
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-indigo-300/90 tracking-wider">ETH</span>
-        </div>
-
-        {/* Tether (USDT) - Mid Left */}
-        <div className="absolute top-[36%] left-[1.5%] sm:left-[3%] lg:left-[4%] flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-[#141923]/75 border border-[#2A3447]/60 shadow-lg shadow-black/40 backdrop-blur-sm animate-float-3">
-          <TetherLogo className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-md" />
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-emerald-300/90 tracking-wider">USDT</span>
-        </div>
-
-        {/* Solana (SOL) - Mid Right */}
-        <div className="absolute top-[48%] right-[2%] sm:right-[3.5%] lg:right-[5%] flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-[#141923]/75 border border-[#2A3447]/60 shadow-lg shadow-black/40 backdrop-blur-sm animate-float-1">
-          <SolanaLogo className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-md" />
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-purple-300/90 tracking-wider">SOL</span>
-        </div>
-
-        {/* BNB Chain (BNB) - Lower Mid Left */}
-        <div className="absolute top-[64%] left-[2%] sm:left-[4%] lg:left-[5%] flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-[#141923]/75 border border-[#2A3447]/60 shadow-lg shadow-black/40 backdrop-blur-sm animate-float-2">
-          <BnbLogo className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-md" />
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-yellow-300/90 tracking-wider">BNB</span>
-        </div>
-
-        {/* TRON (TRX) - Lower Right */}
-        <div className="absolute top-[75%] right-[2%] sm:right-[4%] lg:right-[6%] flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-[#141923]/75 border border-[#2A3447]/60 shadow-lg shadow-black/40 backdrop-blur-sm animate-float-3">
-          <TronLogo className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-md" />
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-red-400/90 tracking-wider">TRX</span>
-        </div>
-
-        {/* Ripple (XRP) - Bottom Left */}
-        <div className="absolute top-[88%] left-[2.5%] sm:left-[5%] lg:left-[6%] flex items-center space-x-2 py-1.5 px-2.5 sm:px-3 rounded-2xl bg-[#141923]/75 border border-[#2A3447]/60 shadow-lg shadow-black/40 backdrop-blur-sm animate-float-1">
-          <XrpLogo className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-md" />
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-cyan-300/90 tracking-wider">XRP</span>
-        </div>
-      </div>
     </div>
   );
 };

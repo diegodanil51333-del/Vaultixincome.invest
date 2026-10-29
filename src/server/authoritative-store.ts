@@ -244,6 +244,29 @@ class AuthoritativeStore {
       }
     }
 
+    if (!foundUser && normalizedCode.startsWith("VXREF-")) {
+      const candidateUser = trimmed.replace(/^VXREF-/i, "").trim();
+      if (candidateUser && candidateUser.length >= 2 && candidateUser.toLowerCase() !== cleanUsername && candidateUser.toLowerCase() !== cleanEmail) {
+        foundUser = {
+          userId: "USR-" + candidateUser,
+          accountId: "VX-" + Math.floor(100000 + Math.random() * 900000),
+          username: candidateUser,
+          fullName: candidateUser,
+          email: `${candidateUser.toLowerCase()}@vaultix.pro`,
+          role: 'USER',
+          accountStatus: 'ACTIVE',
+          balance: 0,
+          totalDeposits: 0,
+          totalInvestments: 0,
+          totalProfitLoss: 0,
+          referralEarnings: 0,
+          bonusBalance: 0,
+          referralCode: "VXREF-" + candidateUser,
+          createdAt: new Date().toISOString()
+        };
+      }
+    }
+
     if (!foundUser) {
       return {
         valid: false,

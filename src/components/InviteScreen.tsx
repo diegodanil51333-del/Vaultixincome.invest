@@ -52,7 +52,11 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
   const minThreshold = refConfig.withdrawalThreshold || 50.0;
   const NETWORK_FEE = 15.0;
 
-  const referralLink = typeof window !== "undefined" ? `${window.location.origin}/?ref=${user?.referralCode || ""}` : "";
+  const activeReferralCode = user?.referralCode && !user.referralCode.match(/^VXREF-\d{4}$/)
+    ? user.referralCode
+    : `VXREF-${user?.username || 'MEMBER'}`;
+
+  const referralLink = typeof window !== "undefined" ? `${window.location.origin}/?ref=${activeReferralCode}` : "";
   const invitations = (getInvitations() || []).filter((inv) => Boolean(inv && inv.inviterUsername && user?.username && inv.inviterUsername === user.username));
   
   // Accurately track every referred user by userId, username, or referralCode
@@ -68,8 +72,8 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
     );
     const matchRefCode = Boolean(
       u.referredBy &&
-      (user?.referralCode || "VXREF-DEFAULT") &&
-      u.referredBy.toUpperCase() === (user?.referralCode || "VXREF-DEFAULT").toUpperCase()
+      activeReferralCode &&
+      u.referredBy.toUpperCase() === activeReferralCode.toUpperCase()
     );
     return matchId || matchUsername || matchRefCode;
   });
@@ -86,8 +90,13 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
   };
 
   const handleCopyCode = () => {
-    navigator.clipboard.writeText((user?.referralCode || "VXREF-DEFAULT"));
+    navigator.clipboard.writeText(activeReferralCode);
     setCopiedCode(true);
+    showToast({
+      type: 'copy',
+      title: 'Referral Code Copied',
+      message: `Code ${activeReferralCode} copied to clipboard.`
+    });
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
@@ -408,7 +417,7 @@ export const InviteScreen: React.FC<InviteScreenProps> = ({ user, onUserUpdated 
               <input
                 type="text"
                 readOnly
-                value={(user?.referralCode || "VXREF-DEFAULT")}
+                value={activeReferralCode}
                 className="flex-1 bg-[#1D2432] border border-[#2A3447] rounded-xl px-3.5 py-2 text-sm text-[#D4AF37] font-bold focus:outline-none"
               />
               <button

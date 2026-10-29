@@ -205,10 +205,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
             <div className="inline-flex flex-wrap items-center justify-center gap-2 bg-[#141923]/95 border border-[#D4AF37]/50 px-4 py-1.5 rounded-full shadow-xl">
               <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
               <span className="text-xs font-black text-[#D4AF37] tracking-wider uppercase">
-                VAULTIX PRIVATE WEALTH & DIGITAL ASSET PLATFORM
+                VAULTIX PRIVATE WEALTH
               </span>
-              <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                ● Multi-Sig Cold Custody
+              <span className="text-[10px] text-amber-300 font-semibold bg-[#D4AF37]/15 border border-[#D4AF37]/30 px-2.5 py-0.5 rounded-full">
+                Grow your wealth with institutional precision.
               </span>
             </div>
 

@@ -91,7 +91,7 @@ export const InvestmentGuideModal: React.FC<InvestmentGuideModalProps> = ({
                   7 Simple Steps
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">Everything you need to know about funding, yields, and withdrawals</p>
+              <p className="text-xs text-slate-400">Grow your wealth with institutional precision — 7 simple steps to funding, yields, and withdrawals</p>
             </div>
           </div>
           <button

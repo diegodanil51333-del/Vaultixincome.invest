@@ -124,6 +124,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <div className="flex items-center space-x-2 text-xs font-bold text-[#D4AF37] uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Digital Asset Portfolio</span>
+            <span className="text-slate-400 font-normal normal-case hidden sm:inline">• Grow your wealth with institutional precision.</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white">
             Welcome, {user?.fullName || user?.username || 'Valued Investor'}

@@ -10,7 +10,7 @@ import { db, collection, onSnapshot } from '../firebase';
 import { cryptoPriceService } from '../services/cryptoPriceService';
 import {
   ShieldAlert, Search, CheckCircle, AlertCircle, X, DollarSign, Wallet, ArrowUpRight,
-  Layers, Sliders, Activity, RefreshCw, Copy, Check, TrendingUp,
+  Layers, Sliders, Activity, RefreshCw, Copy, Check, TrendingUp, Users, Share2, Settings, Gift
 } from 'lucide-react';
 import { TransactionReceiptModal } from './TransactionReceiptModal';
 
@@ -19,8 +19,10 @@ interface AdminScreenProps {
 }
 
 export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
-  const [tab, setTab] = useState<'users' | 'deposits' | 'withdrawals' | 'investments' | 'all_txs' | 'wallets' | 'plans' | 'referral' | 'audit'>('users');
+  const [tab, setTab] = useState<'users' | 'referrals' | 'deposits' | 'withdrawals' | 'investments' | 'all_txs' | 'settings' | 'wallets' | 'plans' | 'referral' | 'audit'>('users');
   const [searchQuery, setSearchQuery] = useState('');
+  const [refTrackingSearch, setRefTrackingSearch] = useState('');
+  const [refTrackingFilter, setRefTrackingFilter] = useState<'ALL' | 'REFERRED' | 'DIRECT'>('ALL');
   const [selectedTxForReceipt, setSelectedTxForReceipt] = useState<Transaction | null>(null);
   const [users, setUsers] = useState<User[]>(getUsers());
   const [transactions, setTransactions] = useState<Transaction[]>(getTransactions());
@@ -361,6 +363,49 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
     setMsg('Referral parameters updated server-side!');
   };
 
+  const handleSaveGlobalSettings = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    saveWallets(wallets);
+    savePlans(plans);
+    saveReferralConfig(refConfig);
+
+    const logs = getAuditLogs();
+    logs.unshift({
+      id: `AUDIT-${Math.floor(10000 + Math.random() * 90000)}`,
+      adminId: currentAdmin.userId,
+      action: 'GLOBAL_SETTINGS_CHANGED',
+      targetUserId: 'SYSTEM',
+      targetUsername: 'GLOBAL_SETTINGS',
+      newValue: 'Updated Crypto Wallets, Vault Yield Rates, and Referral Bonus Parameters',
+      timestamp: new Date().toISOString()
+    });
+    saveAuditLogs(logs);
+
+    setMsg('Global Platform Settings saved! Crypto deposit wallets, vault daily yield rates, and referral bonuses are active platform-wide.');
+    refreshData();
+  };
+
+  const referredMembers = users.filter((u) => Boolean(u.referredBy || u.referredByUsername));
+  const totalWelcomeBonusesDisbursed = users.filter((u) => u.hasReceivedSignupBonus).length * (refConfig.signupBonusAmount ?? 2.0);
+  const totalReferralRewardsDisbursed = users.reduce((sum, u) => sum + (Number(u.referralEarnings) || 0), 0);
+
+  const filteredReferralUsers = users.filter((u) => {
+    const q = refTrackingSearch.toLowerCase().trim();
+    const isReferred = Boolean(u.referredBy || u.referredByUsername);
+
+    if (refTrackingFilter === 'REFERRED' && !isReferred) return false;
+    if (refTrackingFilter === 'DIRECT' && isReferred) return false;
+
+    if (!q) return true;
+    return (
+      Boolean(u.username && u.username.toLowerCase().includes(q)) ||
+      Boolean(u.fullName && u.fullName.toLowerCase().includes(q)) ||
+      Boolean(u.accountId && u.accountId.toLowerCase().includes(q)) ||
+      Boolean(u.referralCode && u.referralCode.toLowerCase().includes(q)) ||
+      Boolean(u.referredByUsername && u.referredByUsername.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="space-y-6">
       {/* Admin Header */}
@@ -371,7 +416,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
             <span>Administrator Control Center</span>
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Realtime user directory, deposit & withdrawal approvals, wallets, and audit logs
+            Realtime user directory, referral tracking & attribution, deposit & withdrawal approvals, global settings, and audit logs
           </p>
         </div>
 
@@ -383,6 +428,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
             }`}
           >
             Users ({users.length})
+          </button>
+
+          <button
+            onClick={() => setTab('referrals')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all relative ${
+              tab === 'referrals' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Referrals ({referredMembers.length})
           </button>
 
           <button
@@ -432,29 +486,16 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
           </button>
 
           <button
-            onClick={() => setTab('wallets')}
+            onClick={() => setTab('settings')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              tab === 'wallets' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'
+              tab === 'settings' || tab === 'wallets' || tab === 'plans' || tab === 'referral'
+                ? 'bg-purple-500/20 text-purple-400'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
-            Wallets & XRP
+            Global Settings
           </button>
-          <button
-            onClick={() => setTab('plans')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              tab === 'plans' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Plans
-          </button>
-          <button
-            onClick={() => setTab('referral')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              tab === 'referral' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Referral Config
-          </button>
+
           <button
             onClick={() => setTab('audit')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -557,6 +598,161 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: Dedicated Referral Directory & Attribution Tracking */}
+      {tab === 'referrals' && (
+        <div className="space-y-4">
+          {/* Summary Stat Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-[#141923] border border-[#2A3447] rounded-xl p-4">
+              <span className="text-[11px] text-slate-400 font-medium block">Total Members</span>
+              <div className="text-xl font-bold text-white mt-1">{users.length}</div>
+              <span className="text-[10px] text-slate-500">Registered platform accounts</span>
+            </div>
+
+            <div className="bg-[#141923] border border-indigo-500/30 rounded-xl p-4">
+              <span className="text-[11px] text-indigo-400 font-medium block">Referred Members</span>
+              <div className="text-xl font-bold text-indigo-300 mt-1">{referredMembers.length}</div>
+              <span className="text-[10px] text-slate-400">{((referredMembers.length / Math.max(1, users.length)) * 100).toFixed(1)}% via invitations</span>
+            </div>
+
+            <div className="bg-[#141923] border border-emerald-500/30 rounded-xl p-4">
+              <span className="text-[11px] text-emerald-400 font-medium block">Welcome Bonuses</span>
+              <div className="text-xl font-bold text-emerald-300 mt-1">${totalWelcomeBonusesDisbursed.toFixed(2)}</div>
+              <span className="text-[10px] text-slate-400">${(refConfig.signupBonusAmount ?? 2.0).toFixed(2)} credited per invitee</span>
+            </div>
+
+            <div className="bg-[#141923] border border-amber-500/30 rounded-xl p-4">
+              <span className="text-[11px] text-amber-400 font-medium block">Referrer Commissions</span>
+              <div className="text-xl font-bold text-amber-300 mt-1">${totalReferralRewardsDisbursed.toFixed(2)}</div>
+              <span className="text-[10px] text-slate-400">${(refConfig.bonusAmount ?? 3.0).toFixed(2)} credited per referral</span>
+            </div>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-500" />
+              <input
+                type="text"
+                value={refTrackingSearch}
+                onChange={(e) => setRefTrackingSearch(e.target.value)}
+                placeholder="Search by Invitee, Referrer username, or Referral Code..."
+                className="w-full bg-[#141923] border border-[#2A3447] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-purple-400"
+              />
+            </div>
+
+            <div className="flex gap-1 bg-[#141923] border border-[#2A3447] p-1 rounded-xl self-stretch sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setRefTrackingFilter('ALL')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  refTrackingFilter === 'ALL' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All ({users.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRefTrackingFilter('REFERRED')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  refTrackingFilter === 'REFERRED' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Referred ({referredMembers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRefTrackingFilter('DIRECT')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  refTrackingFilter === 'DIRECT' ? 'bg-slate-700 text-slate-200' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Direct ({users.length - referredMembers.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Referral Tracking Table / List */}
+          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl overflow-hidden divide-y divide-[#2A3447]">
+            {filteredReferralUsers.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                No user referral records found matching your filters.
+              </div>
+            ) : (
+              filteredReferralUsers.map((u) => {
+                const isReferred = Boolean(u.referredBy || u.referredByUsername);
+                return (
+                  <div key={u.userId} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-[#1D2432]/50 transition-colors text-xs">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-white text-sm">@{u.username}</span>
+                        <span className="text-slate-400 text-xs font-medium">({u.fullName})</span>
+                        <span className="font-mono text-[10px] text-amber-400/90 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                          {u.referralCode || `VXREF-${u.username}`}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${u.accountStatus === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                          {u.accountStatus}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-300">
+                        <span>Acc ID: <span className="font-mono text-slate-400">{u.accountId}</span></span>
+                        <span>
+                          Attributed Referrer:{' '}
+                          {isReferred ? (
+                            <span className="font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">
+                              @{u.referredByUsername || u.referredBy}
+                              {u.referredByDisplayName && u.referredByDisplayName !== u.referredByUsername ? ` (${u.referredByDisplayName})` : ''}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 font-medium">Direct Registration</span>
+                          )}
+                        </span>
+                        <span>Registered: <span className="text-slate-400">{new Date(u.createdAt).toLocaleDateString()}</span></span>
+                      </div>
+
+                      {/* Bonus Status Tags */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {u.hasReceivedSignupBonus ? (
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                            <CheckCircle className="w-3 h-3" />
+                            <span>Invitee Welcome Bonus ($2.00) Credited</span>
+                          </span>
+                        ) : isReferred ? (
+                          <span className="inline-flex items-center space-x-1 text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                            <span>Welcome Bonus Pending</span>
+                          </span>
+                        ) : null}
+
+                        {isReferred && (
+                          <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-indigo-300 bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 rounded-full">
+                            <CheckCircle className="w-3 h-3" />
+                            <span>Referrer Reward ($3.00) Credited to @{u.referredByUsername || 'referrer'}</span>
+                          </span>
+                        )}
+
+                        <span className="text-[10px] text-slate-400">
+                          Total Referral Earnings: <span className="font-bold text-emerald-400">${(Number(u.referralEarnings) || 0).toFixed(2)} USD</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                      <button
+                        onClick={() => setSelectedUser(u)}
+                        className="bg-[#2A3447] hover:bg-[#37445c] text-white font-medium px-3 py-1.5 rounded-lg text-xs transition-all"
+                      >
+                        Inspect / Adjust Balance
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -1033,227 +1229,274 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({ currentAdmin }) => {
         </div>
       )}
 
-      {/* TAB 4: Crypto Wallets & XRP Control */}
-      {tab === 'wallets' && (
-        <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-6">
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-              <Wallet className="w-4 h-4 text-purple-400" />
-              <span>Configure Admin Crypto Wallets (Includes XRP)</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">Configure wallet addresses, networks, and XRP Destination Tags</p>
-          </div>
-
-          <div className="space-y-4">
-            {wallets.map((w, idx) => (
-              <div key={w.symbol} className="bg-[#1D2432] border border-[#2A3447] rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-sm">{w.name} ({w.symbol})</span>
-                  <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={w.isActive}
-                      onChange={(e) => {
-                        const next = [...wallets];
-                        next[idx].isActive = e.target.checked;
-                        setWallets(next);
-                      }}
-                      className="rounded accent-purple-500"
-                    />
-                    <span>Active</span>
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <label className="block text-slate-400 mb-1">Network</label>
-                    <input
-                      type="text"
-                      value={w.network}
-                      onChange={(e) => {
-                        const next = [...wallets];
-                        next[idx].network = e.target.value;
-                        setWallets(next);
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#2A3447] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Wallet Address</label>
-                    <input
-                      type="text"
-                      value={w.address}
-                      onChange={(e) => {
-                        const next = [...wallets];
-                        next[idx].address = e.target.value;
-                        setWallets(next);
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#2A3447] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-purple-400"
-                    />
-                  </div>
-                </div>
-
-                {w.symbol === 'XRP' && (
-                  <div>
-                    <label className="block text-xs text-amber-400 font-bold mb-1">XRP Destination Tag / Memo</label>
-                    <input
-                      type="text"
-                      value={w.destinationTag || ''}
-                      onChange={(e) => {
-                        const next = [...wallets];
-                        next[idx].destinationTag = e.target.value;
-                        setWallets(next);
-                      }}
-                      placeholder="e.g. 908124"
-                      className="w-full bg-[#0B0E14] border border-amber-500/40 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none"
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-
+      {/* TAB: Global Settings Manager (Wallets, Percentage Rates, Referral Bonuses) */}
+      {(tab === 'settings' || tab === 'wallets' || tab === 'plans' || tab === 'referral') && (
+        <div className="space-y-6">
+          {/* Settings Control Header Banner */}
+          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                <Settings className="w-5 h-5 text-purple-400" />
+                <span>Global Platform Settings Manager</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Centrally configure deposit wallet addresses, daily percentage return rates, and referral bonus rules with instant global synchronization.
+              </p>
+            </div>
             <button
-              onClick={() => handleSaveWallets(wallets)}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md cursor-pointer"
+              onClick={() => handleSaveGlobalSettings()}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-lg flex items-center space-x-2 shrink-0 cursor-pointer"
             >
-              SAVE CRYPTO WALLET CONFIGURATIONS
+              <Check className="w-4 h-4" />
+              <span>SAVE ALL GLOBAL SETTINGS</span>
             </button>
           </div>
-        </div>
-      )}
 
-      {/* TAB 5: Investment Plans Config */}
-      {tab === 'plans' && (
-        <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-            <Layers className="w-4 h-4 text-purple-400" />
-            <span>Investment Plans Configuration ($10 – $100,000)</span>
-          </h3>
-
-          <div className="space-y-3">
-            {plans.map((p, idx) => (
-              <div key={p.id} className="bg-[#1D2432] border border-[#2A3447] rounded-xl p-4 space-y-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white">{p.name} ({p.asset})</span>
-                  <label className="flex items-center space-x-2 text-slate-300">
-                    <input
-                      type="checkbox"
-                      checked={p.isActive}
-                      onChange={(e) => {
-                        const next = [...plans];
-                        next[idx].isActive = e.target.checked;
-                        setPlans(next);
-                        savePlans(next);
-                      }}
-                      className="rounded accent-purple-500"
-                    />
-                    <span>Active Plan</span>
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div>
-                    <span className="text-slate-400 block">Min ($)</span>
-                    <input
-                      type="number"
-                      value={p.minDeposit}
-                      onChange={(e) => {
-                        const next = [...plans];
-                        next[idx].minDeposit = Number(e.target.value);
-                        setPlans(next);
-                        savePlans(next);
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2 py-1 text-white"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Max ($)</span>
-                    <input
-                      type="number"
-                      value={p.maxDeposit}
-                      onChange={(e) => {
-                        const next = [...plans];
-                        next[idx].maxDeposit = Number(e.target.value);
-                        setPlans(next);
-                        savePlans(next);
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2 py-1 text-white"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Daily Yield %</span>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={p.dailyYield}
-                      onChange={(e) => {
-                        const next = [...plans];
-                        next[idx].dailyYield = Number(e.target.value);
-                        setPlans(next);
-                        savePlans(next);
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2 py-1 text-white"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Lock Days</span>
-                    <input
-                      type="number"
-                      value={p.lockDays}
-                      onChange={(e) => {
-                        const next = [...plans];
-                        next[idx].lockDays = Number(e.target.value);
-                        setPlans(next);
-                        savePlans(next);
-                      }}
-                      className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2 py-1 text-white"
-                    />
-                  </div>
-                </div>
+          {/* Section 1: Crypto Deposit Wallets & XRP Control */}
+          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <Wallet className="w-4 h-4 text-purple-400" />
+                  <span>1. Cryptocurrency Deposit Wallets & Networks</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">Deposit addresses displayed to users on the Deposit and Wallet screens</p>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: Referral Config */}
-      {tab === 'referral' && (
-        <form onSubmit={handleSaveReferralConfig} className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-            <Sliders className="w-4 h-4 text-purple-400" />
-            <span>Central Referral Rules & Withdrawal Threshold</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Referral Reward Bonus ($)</label>
-              <input
-                type="number"
-                value={refConfig.bonusAmount}
-                onChange={(e) => setRefConfig({ ...refConfig, bonusAmount: Number(e.target.value) })}
-                className="w-full bg-[#1D2432] border border-[#2A3447] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-purple-400"
-              />
             </div>
 
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">Referral Withdrawal Threshold ($)</label>
-              <input
-                type="number"
-                value={refConfig.withdrawalThreshold}
-                onChange={(e) => setRefConfig({ ...refConfig, withdrawalThreshold: Number(e.target.value) })}
-                className="w-full bg-[#1D2432] border border-[#2A3447] rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-purple-400"
-              />
+            <div className="space-y-4">
+              {wallets.map((w, idx) => (
+                <div key={w.symbol} className="bg-[#1D2432] border border-[#2A3447] rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-sm">{w.name} ({w.symbol})</span>
+                    <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={w.isActive}
+                        onChange={(e) => {
+                          const next = [...wallets];
+                          next[idx].isActive = e.target.checked;
+                          setWallets(next);
+                        }}
+                        className="rounded accent-purple-500"
+                      />
+                      <span>Active for Deposits</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Network</label>
+                      <input
+                        type="text"
+                        value={w.network}
+                        onChange={(e) => {
+                          const next = [...wallets];
+                          next[idx].network = e.target.value;
+                          setWallets(next);
+                        }}
+                        className="w-full bg-[#0B0E14] border border-[#2A3447] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1">Wallet Address</label>
+                      <input
+                        type="text"
+                        value={w.address}
+                        onChange={(e) => {
+                          const next = [...wallets];
+                          next[idx].address = e.target.value;
+                          setWallets(next);
+                        }}
+                        className="w-full bg-[#0B0E14] border border-[#2A3447] rounded-lg px-3 py-2 text-white font-mono focus:outline-none focus:border-purple-400"
+                      />
+                    </div>
+                  </div>
+
+                  {w.symbol === 'XRP' && (
+                    <div>
+                      <label className="block text-xs text-amber-400 font-bold mb-1">XRP Destination Tag / Memo</label>
+                      <input
+                        type="text"
+                        value={w.destinationTag || ''}
+                        onChange={(e) => {
+                          const next = [...wallets];
+                          next[idx].destinationTag = e.target.value;
+                          setWallets(next);
+                        }}
+                        placeholder="e.g. 908124"
+                        className="w-full bg-[#0B0E14] border border-amber-500/40 rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
+          {/* Section 2: Vault Yield Percentage Rates */}
+          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-purple-400" />
+                <span>2. Vault Yield Percentage Rates & Term Lock Durations</span>
+              </h4>
+              <p className="text-xs text-slate-400 mt-0.5">Control daily yield percentages, lock terms, and minimum/maximum deposit amounts for each plan</p>
+            </div>
+
+            <div className="space-y-3">
+              {plans.map((p, idx) => (
+                <div key={p.id} className="bg-[#1D2432] border border-[#2A3447] rounded-xl p-4 space-y-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-white">{p.name}</span>
+                      <span className="text-slate-400 ml-2">({p.asset})</span>
+                    </div>
+                    <label className="flex items-center space-x-2 text-slate-300">
+                      <input
+                        type="checkbox"
+                        checked={p.isActive}
+                        onChange={(e) => {
+                          const next = [...plans];
+                          next[idx].isActive = e.target.checked;
+                          setPlans(next);
+                        }}
+                        className="rounded accent-purple-500"
+                      />
+                      <span>Active Vault</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div>
+                      <span className="text-slate-400 block mb-1">Daily Yield %</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={p.dailyYield}
+                        onChange={(e) => {
+                          const next = [...plans];
+                          next[idx].dailyYield = Number(e.target.value);
+                          setPlans(next);
+                        }}
+                        className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2.5 py-1.5 text-white font-bold text-emerald-400"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block mb-1">Lock Days</span>
+                      <input
+                        type="number"
+                        value={p.lockDays}
+                        onChange={(e) => {
+                          const next = [...plans];
+                          next[idx].lockDays = Number(e.target.value);
+                          setPlans(next);
+                        }}
+                        className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2.5 py-1.5 text-white"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block mb-1">Min ($)</span>
+                      <input
+                        type="number"
+                        value={p.minDeposit}
+                        onChange={(e) => {
+                          const next = [...plans];
+                          next[idx].minDeposit = Number(e.target.value);
+                          setPlans(next);
+                        }}
+                        className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2.5 py-1.5 text-white"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block mb-1">Max ($)</span>
+                      <input
+                        type="number"
+                        value={p.maxDeposit}
+                        onChange={(e) => {
+                          const next = [...plans];
+                          next[idx].maxDeposit = Number(e.target.value);
+                          setPlans(next);
+                        }}
+                        className="w-full bg-[#0B0E14] border border-[#2A3447] rounded px-2.5 py-1.5 text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 3: Referral & Welcome Bonus Settings */}
+          <div className="bg-[#141923] border border-[#2A3447] rounded-2xl p-6 space-y-4">
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center space-x-2">
+                <Sliders className="w-4 h-4 text-purple-400" />
+                <span>3. Central Referral & Welcome Bonus Rules</span>
+              </h4>
+              <p className="text-xs text-slate-400 mt-0.5">Dynamic registration welcome bonus ($2.00) and referrer rewards ($3.00)</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Invitee Welcome Bonus ($ USD)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={refConfig.signupBonusAmount ?? 2.0}
+                  onChange={(e) => setRefConfig({ ...refConfig, signupBonusAmount: Number(e.target.value) })}
+                  className="w-full bg-[#1D2432] border border-[#2A3447] rounded-xl px-3.5 py-2.5 text-white font-bold text-emerald-400 focus:outline-none focus:border-purple-400"
+                />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Credited instantly to new member</span>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Referrer Commission Reward ($ USD)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={refConfig.bonusAmount ?? 3.0}
+                  onChange={(e) => setRefConfig({ ...refConfig, bonusAmount: Number(e.target.value) })}
+                  className="w-full bg-[#1D2432] border border-[#2A3447] rounded-xl px-3.5 py-2.5 text-white font-bold text-indigo-300 focus:outline-none focus:border-purple-400"
+                />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Credited instantly to inviter</span>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Referral Withdrawal Threshold ($ USD)</label>
+                <input
+                  type="number"
+                  value={refConfig.withdrawalThreshold ?? 50.0}
+                  onChange={(e) => setRefConfig({ ...refConfig, withdrawalThreshold: Number(e.target.value) })}
+                  className="w-full bg-[#1D2432] border border-[#2A3447] rounded-xl px-3.5 py-2.5 text-white font-bold text-[#D4AF37] focus:outline-none focus:border-purple-400"
+                />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Min referral earnings needed to request withdrawal</span>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <label className="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={refConfig.isActive !== false}
+                  onChange={(e) => setRefConfig({ ...refConfig, isActive: e.target.checked })}
+                  className="rounded accent-purple-500"
+                />
+                <span>Referral Program & Signup Bonus System Active</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Master Save Button */}
           <button
-            type="submit"
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-md cursor-pointer"
+            onClick={() => handleSaveGlobalSettings()}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 rounded-xl text-xs transition-all shadow-xl cursor-pointer flex items-center justify-center space-x-2"
           >
-            SAVE REFERRAL CONFIGURATION
+            <Check className="w-4 h-4" />
+            <span>SAVE ALL GLOBAL SETTINGS (INSTANT PLATFORM SYNC)</span>
           </button>
-        </form>
+        </div>
       )}
 
       {/* TAB 7: Administrative Audit Logs */}
