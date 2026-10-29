@@ -58,20 +58,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
 
       {/* 1. PROFESSIONAL NAVIGATION BAR (Requirement 2) */}
       <header className="sticky top-0 z-40 bg-[#0B0E14]/90 backdrop-blur-md border-b border-[#2A3447]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
           {/* Logo & Brand */}
           <div 
-            className="flex items-center space-x-3 cursor-pointer" 
+            className="flex items-center space-x-2 sm:space-x-3 cursor-pointer shrink-0" 
             onClick={() => scrollToSection('home')}
           >
             <img 
               src="/logo.jpg" 
               alt="Vaultix Income" 
-              className="w-10 h-10 rounded-full border border-[#D4AF37]/60 object-cover shadow-md" 
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-[#D4AF37]/60 object-cover shadow-md shrink-0" 
             />
-            <div>
-              <span className="font-black text-lg text-[#D4AF37] tracking-wider block">VAULTIX INCOME</span>
-              <span className="text-[10px] text-slate-400 font-bold block -mt-1 uppercase">Wealth & Yield Platform</span>
+            <div className="shrink-0 flex flex-col justify-center">
+              <span className="font-black text-xs min-[360px]:text-sm sm:text-lg text-[#D4AF37] tracking-tight min-[390px]:tracking-normal sm:tracking-wider block whitespace-nowrap">VAULTIX INCOME</span>
+              <span className="text-[8px] min-[360px]:text-[9px] sm:text-[10px] text-slate-400 font-bold block -mt-0.5 sm:-mt-1 uppercase tracking-wider whitespace-nowrap">Wealth & Yield Platform</span>
             </div>
           </div>
 
@@ -104,7 +104,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           </nav>
 
           {/* Desktop Action Buttons (Required: Login, Create Account) */}
-          <div className="hidden sm:flex items-center space-x-3">
+          <div className="hidden sm:flex items-center space-x-3 shrink-0">
             <button
               onClick={() => onOpenAuth('login')}
               className="text-xs font-bold text-slate-300 hover:text-white px-4 py-2.5 rounded-xl border border-[#2A3447] hover:border-[#D4AF37]/40 transition-all cursor-pointer"
@@ -120,19 +120,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           </div>
 
           {/* Mobile Menu Toggle Button */}
-          <div className="flex sm:hidden items-center space-x-2">
+          <div className="flex sm:hidden items-center space-x-1.5 shrink-0">
             <button
               onClick={() => onOpenAuth('login')}
-              className="text-xs font-bold text-slate-300 px-3 py-1.5 rounded-lg border border-[#2A3447]"
+              className="text-xs font-bold text-slate-300 px-2.5 py-1.5 rounded-lg border border-[#2A3447] bg-[#141923]"
             >
               Login
             </button>
             <button
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              className="p-2 text-slate-300 hover:text-white rounded-lg bg-[#1D2432]"
+              className="p-1.5 text-slate-300 hover:text-white rounded-lg bg-[#1D2432] border border-[#2A3447]"
               aria-label="Toggle Mobile Menu"
             >
-              {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5 text-[#D4AF37]" />}
+              {mobileNavOpen ? <X className="w-5 h-5 text-[#D4AF37]" /> : <Menu className="w-5 h-5 text-[#D4AF37]" />}
             </button>
           </div>
         </div>

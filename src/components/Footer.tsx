@@ -16,10 +16,10 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSupport }) => {
           {/* Column 1: Brand Info */}
           <div className="space-y-3 md:col-span-1">
             <div className="flex items-center space-x-2.5">
-              <img src="/logo.jpg" alt="Vaultix Income" className="w-9 h-9 rounded-full border border-[#D4AF37]/60 object-cover" />
-              <div>
-                <span className="font-extrabold text-sm text-[#D4AF37] tracking-wider block">VAULTIX INCOME</span>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold">Digital Wealth Platform</span>
+              <img src="/logo.jpg" alt="Vaultix Income" className="w-9 h-9 rounded-full border border-[#D4AF37]/60 object-cover shrink-0" />
+              <div className="shrink-0">
+                <span className="font-black text-sm text-[#D4AF37] tracking-wider block whitespace-nowrap">VAULTIX INCOME</span>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Digital Wealth Platform</span>
               </div>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">

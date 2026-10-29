@@ -67,47 +67,56 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="bg-[#141923] border-b border-[#2A3447] px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-md">
+      <header className="bg-[#141923] border-b border-[#2A3447] px-2.5 sm:px-4 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-40 shadow-md">
         {/* Left: Hamburger Button & Brand Logo */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
           {/* Three-line menu button */}
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-xl bg-[#1D2432] hover:bg-[#2A3447] text-slate-300 hover:text-white border border-[#2A3447] transition-all cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-[#1D2432] hover:bg-[#2A3447] text-slate-300 hover:text-white border border-[#2A3447] transition-all cursor-pointer shrink-0"
             aria-label="Toggle Navigation Menu"
             title="Open Menu"
           >
-            {isMobileMenuOpen ? <X className="w-5 h-5 text-[#D4AF37]" /> : <Menu className="w-5 h-5 text-[#D4AF37]" />}
+            {isMobileMenuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5 text-[#D4AF37]" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-[#D4AF37]" />}
           </button>
 
           {/* Logo & Platform Name */}
           <div 
-            className="flex items-center space-x-2.5 cursor-pointer shrink-0" 
+            className="flex items-center space-x-1.5 sm:space-x-2.5 cursor-pointer shrink-0" 
             onClick={() => onSelectTab('dashboard')}
           >
             <img 
               src="/logo.jpg" 
               alt="Vaultix Income" 
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#D4AF37]/50 object-cover shadow-sm shrink-0" 
+              className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full border border-[#D4AF37]/50 object-cover shadow-sm shrink-0" 
             />
-            <div className="shrink-0">
-              <h1 className="text-sm sm:text-base font-black text-[#D4AF37] tracking-wider leading-none whitespace-nowrap">
+            <div className="shrink-0 flex flex-col justify-center leading-none">
+              {/* Responsive brand name: stacked on sub-400px mobile for 100% zero-clipping guarantee, single-line on 400px+ */}
+              <div className="min-[400px]:hidden flex flex-col leading-tight">
+                <span className="text-[11px] font-black text-[#D4AF37] tracking-wider leading-tight whitespace-nowrap">
+                  VAULTIX
+                </span>
+                <span className="text-[10px] font-black text-[#D4AF37] tracking-wider leading-tight whitespace-nowrap">
+                  INCOME
+                </span>
+              </div>
+              <h1 className="hidden min-[400px]:block text-[13px] sm:text-base font-black text-[#D4AF37] tracking-tight min-[440px]:tracking-normal sm:tracking-wider leading-none whitespace-nowrap shrink-0">
                 VAULTIX INCOME
               </h1>
-              <span className="text-[10px] text-slate-400 font-medium hidden sm:block whitespace-nowrap">Digital Wealth Management</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium hidden md:block whitespace-nowrap mt-0.5">Digital Wealth Management</span>
             </div>
           </div>
         </div>
 
         {/* Right: Investment Guide, User Profile Badge, Logout */}
-        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
           {/* Investment Guide Button */}
           {onOpenGuide && (
             <button
               type="button"
               onClick={onOpenGuide}
-              className="hidden sm:inline-flex items-center space-x-1.5 bg-[#1D2432] hover:bg-[#2A3447] text-[#D4AF37] px-3 py-1.5 rounded-xl border border-[#D4AF37]/30 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+              className="hidden sm:inline-flex items-center space-x-1.5 bg-[#1D2432] hover:bg-[#2A3447] text-[#D4AF37] px-3 py-1.5 rounded-xl border border-[#D4AF37]/30 text-xs font-semibold transition-all cursor-pointer shadow-sm shrink-0"
               title="Open 7-Step Investment Guide"
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -120,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => onSelectTab('admin')}
-              className={`hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm ${
+              className={`hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 ${
                 currentTab === 'admin'
                   ? 'bg-purple-600 text-white border-purple-400'
                   : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/35 border-purple-500/50'
@@ -136,17 +145,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => onSelectTab('profile')}
-            className="flex items-center space-x-2 bg-[#1D2432] hover:bg-[#2A3447] px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#2A3447] transition-all cursor-pointer"
+            className="flex items-center space-x-1.5 sm:space-x-2 bg-[#1D2432] hover:bg-[#2A3447] px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-[#2A3447] transition-all cursor-pointer shrink-0"
             title="View Profile Details"
           >
-            <div className="w-6 h-6 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] text-xs font-bold shrink-0 overflow-hidden">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#10141D] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] text-[10px] sm:text-xs font-bold shrink-0 overflow-hidden">
               {(user?.photoURL || user?.avatarUrl) ? (
                 <img src={user.photoURL || user.avatarUrl} alt={user?.username || "user"} className="w-full h-full object-cover" />
               ) : (
                 (user?.username || "user") ? (user?.username || "user")[0].toUpperCase() : "U"
               )}
             </div>
-            <span className="text-xs font-bold text-white truncate max-w-[100px] sm:max-w-[130px]">
+            <span className="text-[11px] sm:text-xs font-bold text-white truncate max-w-[68px] min-[390px]:max-w-[85px] sm:max-w-[130px]">
               @{(user?.username || 'user')}
             </span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full hidden sm:inline-block ${
@@ -162,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={onLogout}
-            className="flex items-center space-x-1.5 bg-[#1D2432] hover:bg-rose-500/15 text-slate-300 hover:text-rose-400 px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#2A3447] hover:border-rose-500/30 transition-all text-xs font-semibold cursor-pointer"
+            className="flex items-center space-x-1 bg-[#1D2432] hover:bg-rose-500/15 text-slate-300 hover:text-rose-400 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl border border-[#2A3447] hover:border-rose-500/30 transition-all text-xs font-semibold cursor-pointer shrink-0"
             title="Log Out of Session"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -186,10 +195,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-[#2A3447]">
                 <div className="flex items-center space-x-2.5">
-                  <img src="/logo.jpg" alt="Vaultix Income" className="w-8 h-8 rounded-full border border-[#D4AF37]/50 object-cover" />
+                  <img src="/logo.jpg" alt="Vaultix Income" className="w-8 h-8 rounded-full border border-[#D4AF37]/50 object-cover shrink-0" />
                   <div>
-                    <div className="text-sm font-black text-[#D4AF37]">VAULTIX MENU</div>
-                    <div className="text-[10px] text-slate-400">Settings & Navigation</div>
+                    <div className="text-sm font-black text-[#D4AF37] whitespace-nowrap">VAULTIX INCOME</div>
+                    <div className="text-[10px] text-slate-400">Digital Wealth Platform</div>
                   </div>
                 </div>
                 <button

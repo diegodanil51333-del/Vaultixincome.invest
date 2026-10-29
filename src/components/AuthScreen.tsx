@@ -604,9 +604,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
         <div className="lg:col-span-6 w-full max-w-md mx-auto">
           <div className="bg-[#141923]/95 backdrop-blur-2xl border border-[#2A3447] rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10">
             <div className="flex flex-col items-center text-center mb-6">
-              <img src="/logo.jpg" alt="Vaultix Income" className="w-16 h-16 rounded-full border-2 border-[#D4AF37]/60 object-cover shadow-lg mb-2" />
-              <h1 className="text-xl sm:text-2xl font-extrabold text-[#D4AF37] tracking-wider">VAULTIX INCOME</h1>
-              <p className="text-[11px] text-slate-400 mt-0.5">Digital Asset Management & Wealth Platform</p>
+              <img src="/logo.jpg" alt="Vaultix Income" className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-[#D4AF37]/60 object-cover shadow-lg mb-2" />
+              <h1 className="text-xl sm:text-2xl font-black text-[#D4AF37] tracking-wider whitespace-nowrap">VAULTIX INCOME</h1>
+              <p className="text-xs text-slate-400 mt-1">Grow your wealth with institutional precision.</p>
             </div>
 
             <div className="flex border-b border-[#2A3447] mb-6">
