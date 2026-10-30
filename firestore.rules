@@ -204,6 +204,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /referral_codes/{codeId} {
+      allow read: if true;
+      allow write: if isAuthenticated() || isAdmin();
+    }
+
     // ==========================================
     // 7. Audit Logs & Diagnostics (Strictly Admin only)
     // ==========================================

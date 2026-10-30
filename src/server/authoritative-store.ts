@@ -107,10 +107,44 @@ const INITIAL_USERS: AuthoritativeUser[] = [
     bonusBalance: 0.0,
     referralCode: 'VXREF-3316',
     createdAt: '2026-02-01T12:00:00.000Z'
+  },
+  {
+    userId: 'USR-318531',
+    accountId: 'VX-318531',
+    username: 'Diego533',
+    fullName: 'Diego Daniel',
+    email: 'diegodanili51333@gmail.com',
+    role: 'USER',
+    accountStatus: 'ACTIVE',
+    balance: 10.62,
+    totalDeposits: 50.0,
+    totalInvestments: 4770.0,
+    totalProfitLoss: 0.0,
+    referralEarnings: 0.0,
+    bonusBalance: 2.0,
+    referralCode: 'VXREF-Diego533',
+    createdAt: '2026-02-15T08:00:00.000Z'
+  },
+  {
+    userId: 'USR-318511',
+    accountId: 'VX-318511',
+    username: 'Diego511',
+    fullName: 'Diego Daniel',
+    email: 'diegodanili5133@gmail.com',
+    role: 'USER',
+    accountStatus: 'ACTIVE',
+    balance: 21.0,
+    totalDeposits: 50.0,
+    totalInvestments: 4770.0,
+    totalProfitLoss: 0.0,
+    referralEarnings: 21.0,
+    bonusBalance: 2.0,
+    referralCode: 'VXREF-Diego511',
+    createdAt: '2026-02-10T08:00:00.000Z'
   }
 ];
 
-class AuthoritativeStore {
+export class AuthoritativeStore {
   private users: Map<string, AuthoritativeUser> = new Map();
   private investments: Map<string, AuthoritativeInvestment> = new Map();
   private transactions: Map<string, AuthoritativeTransaction> = new Map();
@@ -235,42 +269,26 @@ class AuthoritativeStore {
 
     // Search authoritative user records by referralCode or username (case-insensitive)
     let foundUser: AuthoritativeUser | undefined;
+    const candidateWithoutPrefix = normalizedCode.replace(/^VXREF-/, '');
     for (const u of this.users.values()) {
       const uRef = (u.referralCode || '').trim().toUpperCase();
       const uName = (u.username || '').trim().toUpperCase();
-      if (uRef === normalizedCode || uName === normalizedCode) {
+      if (
+        uRef === normalizedCode ||
+        uName === normalizedCode ||
+        uName === candidateWithoutPrefix ||
+        ('VXREF-' + uName) === normalizedCode ||
+        ('VXREF-' + uRef) === normalizedCode
+      ) {
         foundUser = u;
         break;
-      }
-    }
-
-    if (!foundUser && normalizedCode.startsWith("VXREF-")) {
-      const candidateUser = trimmed.replace(/^VXREF-/i, "").trim();
-      if (candidateUser && candidateUser.length >= 2 && candidateUser.toLowerCase() !== cleanUsername && candidateUser.toLowerCase() !== cleanEmail) {
-        foundUser = {
-          userId: "USR-" + candidateUser,
-          accountId: "VX-" + Math.floor(100000 + Math.random() * 900000),
-          username: candidateUser,
-          fullName: candidateUser,
-          email: `${candidateUser.toLowerCase()}@vaultix.pro`,
-          role: 'USER',
-          accountStatus: 'ACTIVE',
-          balance: 0,
-          totalDeposits: 0,
-          totalInvestments: 0,
-          totalProfitLoss: 0,
-          referralEarnings: 0,
-          bonusBalance: 0,
-          referralCode: "VXREF-" + candidateUser,
-          createdAt: new Date().toISOString()
-        };
       }
     }
 
     if (!foundUser) {
       return {
         valid: false,
-        error: `Invalid referral code "${trimmed}" provided. Please check the code or leave the field blank.`
+        error: `Invalid referral code "${trimmed}". Please verify the code and try again.`
       };
     }
 
@@ -303,8 +321,8 @@ class AuthoritativeStore {
 
   /**
    * Registers a new user and safely awards referral rewards:
-   * - New user: $2 USD welcome bonus credited to designated bonus balance (bonusBalance)
-   * - Referrer: $5 USD credited to Referral Tier Balance (referralEarnings)
+   * - New user: $2 USD welcome bonus credited to designated bonus balance (bonusBalance) & available balance
+   * - Referrer: $3 USD credited to Referral Tier Balance (referralEarnings) & available balance
    * - Idempotent, transaction-safe duplicate protection
    */
   public registerUserWithReferral(
@@ -316,8 +334,8 @@ class AuthoritativeStore {
     newTxs: AuthoritativeTransaction[];
   } {
     const newTxs: AuthoritativeTransaction[] = [];
-    const normalizedNewCode = (newUser.referralCode || `VXREF-${Math.floor(1000 + Math.random() * 9000)}`).trim().toUpperCase();
-    newUser.referralCode = normalizedNewCode;
+    const defaultCode = newUser.username ? `VXREF-${newUser.username.trim()}` : `VXREF-${Math.floor(1000 + Math.random() * 9000)}`;
+    newUser.referralCode = newUser.referralCode ? newUser.referralCode.trim() : defaultCode;
 
     // Validate referral code
     const valResult = this.validateReferralCode(
@@ -330,8 +348,9 @@ class AuthoritativeStore {
     if (valResult.valid && valResult.referrer && !valResult.isBlank && !valResult.isSelfReferral) {
       const referrerUser = this.users.get(valResult.referrer.userId);
       if (referrerUser && !newUser.hasReceivedSignupBonus) {
-        // 1. Credit new user $2 USD welcome bonus to bonusBalance
+        // 1. Credit new user $2 USD welcome bonus to bonusBalance and balance
         newUser.bonusBalance = (newUser.bonusBalance || 0) + 2.0;
+        newUser.balance = (newUser.balance || 0) + 2.0;
         newUser.hasReceivedSignupBonus = true;
         newUser.referredBy = referrerUser.userId;
         newUser.referredByUsername = referrerUser.username;
@@ -353,9 +372,10 @@ class AuthoritativeStore {
         this.transactions.set(welcomeTx.id, welcomeTx);
         newTxs.push(welcomeTx);
 
-        // 2. Credit referrer $3 USD to bonusBalance & Referral Tier Balance (referralEarnings)
+        // 2. Credit referrer $3 USD to bonusBalance & Referral Tier Balance (referralEarnings) and balance
         referrerUser.bonusBalance = (referrerUser.bonusBalance || 0) + 3.0;
         referrerUser.referralEarnings = (referrerUser.referralEarnings || 0) + 3.0;
+        referrerUser.balance = (referrerUser.balance || 0) + 3.0;
         const refRewardTxId = `TX-${Math.floor(100000 + Math.random() * 900000)}`;
         const refRewardTx: AuthoritativeTransaction = {
           id: refRewardTxId,

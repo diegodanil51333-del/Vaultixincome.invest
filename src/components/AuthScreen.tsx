@@ -493,9 +493,30 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
     const cleanedUserData = cleanFirestoreData(newUser);
     try {
       await setDoc(doc(db, 'users', newUser.userId), cleanedUserData);
+      await setDoc(doc(db, 'referral_codes', newUser.referralCode.toUpperCase()), {
+        code: newUser.referralCode,
+        codeUpper: newUser.referralCode.toUpperCase(),
+        username: newUser.username,
+        usernameLower: newUser.username.toLowerCase(),
+        userId: newUser.userId,
+        fullName: newUser.fullName,
+        status: 'ACTIVE'
+      });
     } catch (fsErr: any) {
       console.error('Firestore user profile write error:', fsErr);
     }
+
+    // Sync with server-side authoritative store
+    try {
+      await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user: newUser,
+          referralCode: referralCodeInput.trim()
+        })
+      });
+    } catch {}
 
     // 6. Process welcome bonus & referral reward atomically
     let finalUser = newUser;

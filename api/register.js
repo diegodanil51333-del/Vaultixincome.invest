@@ -53,6 +53,40 @@ var INITIAL_USERS = [
     bonusBalance: 0,
     referralCode: "VXREF-3316",
     createdAt: "2026-02-01T12:00:00.000Z"
+  },
+  {
+    userId: "USR-318531",
+    accountId: "VX-318531",
+    username: "Diego533",
+    fullName: "Diego Daniel",
+    email: "diegodanili51333@gmail.com",
+    role: "USER",
+    accountStatus: "ACTIVE",
+    balance: 10.62,
+    totalDeposits: 50,
+    totalInvestments: 4770,
+    totalProfitLoss: 0,
+    referralEarnings: 0,
+    bonusBalance: 2,
+    referralCode: "VXREF-Diego533",
+    createdAt: "2026-02-15T08:00:00.000Z"
+  },
+  {
+    userId: "USR-318511",
+    accountId: "VX-318511",
+    username: "Diego511",
+    fullName: "Diego Daniel",
+    email: "diegodanili5133@gmail.com",
+    role: "USER",
+    accountStatus: "ACTIVE",
+    balance: 21,
+    totalDeposits: 50,
+    totalInvestments: 4770,
+    totalProfitLoss: 0,
+    referralEarnings: 21,
+    bonusBalance: 2,
+    referralCode: "VXREF-Diego511",
+    createdAt: "2026-02-10T08:00:00.000Z"
   }
 ];
 var AuthoritativeStore = class {
@@ -149,30 +183,26 @@ var AuthoritativeStore = class {
       };
     }
     let foundUser;
+    const candidateWithoutPrefix = normalizedCode.replace(/^VXREF-/, '');
     for (const u of this.users.values()) {
       const uRef = (u.referralCode || "").trim().toUpperCase();
       const uName = (u.username || "").trim().toUpperCase();
-      if (uRef === normalizedCode || uName === normalizedCode) {
+      if (
+        uRef === normalizedCode ||
+        uName === normalizedCode ||
+        uName === candidateWithoutPrefix ||
+        ('VXREF-' + uName) === normalizedCode ||
+        ('VXREF-' + uRef) === normalizedCode
+      ) {
         foundUser = u;
         break;
-      }
-    }
-    if (!foundUser && normalizedCode.startsWith("VXREF-")) {
-      const candidateUser = trimmed.replace(/^VXREF-/i, "").trim();
-      if (candidateUser && candidateUser.length >= 2 && candidateUser.toLowerCase() !== cleanUsername && candidateUser.toLowerCase() !== cleanEmail) {
-        foundUser = {
-          userId: "USR-" + candidateUser,
-          username: candidateUser,
-          fullName: candidateUser,
-          referralCode: "VXREF-" + candidateUser
-        };
       }
     }
 
     if (!foundUser) {
       return {
         valid: false,
-        error: `Invalid referral code "${trimmed}" provided. Please check the code or leave the field blank.`
+        error: `Invalid referral code "${trimmed}". Please verify the code and try again.`
       };
     }
     const fUsername = foundUser?.username && typeof foundUser.username === "string" ? foundUser.username.toLowerCase() : "";
@@ -196,14 +226,14 @@ var AuthoritativeStore = class {
   }
   /**
    * Registers a new user and safely awards referral rewards:
-   * - New user: $2 USD welcome bonus credited to designated bonus balance (bonusBalance)
-   * - Referrer: $5 USD credited to Referral Tier Balance (referralEarnings)
+   * - New user: $2 USD welcome bonus credited to designated bonus balance (bonusBalance) & available balance
+   * - Referrer: $3 USD credited to Referral Tier Balance (referralEarnings) & available balance
    * - Idempotent, transaction-safe duplicate protection
    */
   registerUserWithReferral(newUser, referralCodeRaw) {
     const newTxs = [];
-    const normalizedNewCode = (newUser.referralCode || `VXREF-${Math.floor(1e3 + Math.random() * 9e3)}`).trim().toUpperCase();
-    newUser.referralCode = normalizedNewCode;
+    const defaultCode = newUser.username ? `VXREF-${newUser.username.trim()}` : `VXREF-${Math.floor(1e3 + Math.random() * 9e3)}`;
+    newUser.referralCode = newUser.referralCode ? newUser.referralCode.trim() : defaultCode;
     const valResult = this.validateReferralCode(
       referralCodeRaw,
       newUser.username,
@@ -214,6 +244,7 @@ var AuthoritativeStore = class {
       const referrerUser = this.users.get(valResult.referrer.userId);
       if (referrerUser && !newUser.hasReceivedSignupBonus) {
         newUser.bonusBalance = (newUser.bonusBalance || 0) + 2;
+        newUser.balance = (newUser.balance || 0) + 2;
         newUser.hasReceivedSignupBonus = true;
         newUser.referredBy = referrerUser.userId;
         newUser.referredByUsername = referrerUser.username;
@@ -235,6 +266,7 @@ var AuthoritativeStore = class {
         newTxs.push(welcomeTx);
         referrerUser.bonusBalance = (referrerUser.bonusBalance || 0) + 3;
         referrerUser.referralEarnings = (referrerUser.referralEarnings || 0) + 3;
+        referrerUser.balance = (referrerUser.balance || 0) + 3;
         const refRewardTxId = `TX-${Math.floor(1e5 + Math.random() * 9e5)}`;
         const refRewardTx = {
           id: refRewardTxId,

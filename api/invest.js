@@ -53,6 +53,40 @@ var INITIAL_USERS = [
     bonusBalance: 0,
     referralCode: "VXREF-3316",
     createdAt: "2026-02-01T12:00:00.000Z"
+  },
+  {
+    userId: "USR-318531",
+    accountId: "VX-318531",
+    username: "Diego533",
+    fullName: "Diego Daniel",
+    email: "diegodanili51333@gmail.com",
+    role: "USER",
+    accountStatus: "ACTIVE",
+    balance: 10.62,
+    totalDeposits: 50,
+    totalInvestments: 4770,
+    totalProfitLoss: 0,
+    referralEarnings: 0,
+    bonusBalance: 2,
+    referralCode: "VXREF-Diego533",
+    createdAt: "2026-02-15T08:00:00.000Z"
+  },
+  {
+    userId: "USR-318511",
+    accountId: "VX-318511",
+    username: "Diego511",
+    fullName: "Diego Daniel",
+    email: "diegodanili5133@gmail.com",
+    role: "USER",
+    accountStatus: "ACTIVE",
+    balance: 21,
+    totalDeposits: 50,
+    totalInvestments: 4770,
+    totalProfitLoss: 0,
+    referralEarnings: 21,
+    bonusBalance: 2,
+    referralCode: "VXREF-Diego511",
+    createdAt: "2026-02-10T08:00:00.000Z"
   }
 ];
 var AuthoritativeStore = class {

@@ -1,10 +1,10 @@
 import { User, Transaction, ReferralConfig, Invitation } from '../types';
-import { getUsers, saveUsers, getTransactions, saveTransactions, getReferralConfig, getInvitations, saveInvitations, normalizeUser } from '../db';
-import { db, doc, setDoc, getDocs, collection, query, where, cleanFirestoreData } from '../firebase';
+import { getUsers, saveUsers, getTransactions, saveTransactions, getReferralConfig, getInvitations, saveInvitations, normalizeUser, SEED_ACCOUNTS } from '../db';
+import { db, doc, setDoc, getDoc, getDocs, collection, query, where, cleanFirestoreData } from '../firebase';
 
 /**
  * Generates an authoritative, username-based referral code.
- * Format: VXREF-[Username] (e.g. Diego511 -> VXREF-Diego511)
+ * Format: VXREF-[Username] (e.g. Diego511 -> VXREF-Diego511, ben -> VXREF-ben)
  */
 export function generateReferralCode(username: string): string {
   if (!username) return 'VXREF-MEMBER';
@@ -22,16 +22,16 @@ export function extractReferralCodeFromUrl(url?: string): string | null {
 
     // Pattern 1: =VXREF-Username
     const equalMatch = targetUrl.match(/=(VXREF-[A-Za-z0-9_-]+)/i);
-    if (equalMatch && equalMatch[1]) return equalMatch[1].toUpperCase();
+    if (equalMatch && equalMatch[1]) return equalMatch[1];
 
     // Pattern 2: URL search params
     const parsed = new URL(targetUrl, 'https://vaultixincome.com');
     const refParam = parsed.searchParams.get('ref') || parsed.searchParams.get('referral');
-    if (refParam) return refParam.trim().toUpperCase();
+    if (refParam) return refParam.trim();
 
     // Pattern 3: Path segment /ref/VXREF-...
     const pathMatch = targetUrl.match(/\/ref\/(VXREF-[A-Za-z0-9_-]+)/i);
-    if (pathMatch && pathMatch[1]) return pathMatch[1].toUpperCase();
+    if (pathMatch && pathMatch[1]) return pathMatch[1];
 
     return null;
   } catch {
@@ -40,24 +40,38 @@ export function extractReferralCodeFromUrl(url?: string): string | null {
 }
 
 /**
- * Authoritatively validates a referral code against local database and Cloud Firestore.
- * Prevents self-referral, resolves dynamic username formats, and verifies referrer eligibility.
+ * Authoritatively validates a referral code against local database, backend API, and Cloud Firestore.
+ * Requirements:
+ * 1. Support existing VXREF-[Username] format in any casing.
+ * 2. Validate against actual registered users and referral records.
+ * 3. Case-insensitive matching while preserving registered username/ownership.
+ * 4. Usernames containing numbers and special characters supported.
+ * 5. Confirm code belongs to an existing eligible user before accepting.
+ * 6. Reject genuinely invalid codes with exact clear error message.
+ * 7. Prevent self-referrals completely.
  */
 export async function validateReferralCodeAsync(
   code: string,
   currentUsername?: string,
   currentEmail?: string
 ): Promise<{ valid: boolean; referrer?: User; error?: string }> {
-  if (!code || !code.trim()) {
+  const trimmed = (code || '').trim();
+  if (!trimmed) {
     return { valid: false, error: 'Please enter a referral code.' };
   }
 
-  const cleanCode = code.trim().toUpperCase();
+  const rawCandidate = trimmed.replace(/^VXREF-/i, '').trim();
+  const normalizedCode = `VXREF-${rawCandidate.toUpperCase()}`;
+  const cleanCurUsername = (currentUsername || '').trim().toLowerCase();
+  const cleanCurEmail = (currentEmail || '').trim().toLowerCase();
 
-  // Self-referral prevention (check against current registering username)
-  if (currentUsername) {
-    const userOwnCode = generateReferralCode(currentUsername).toUpperCase();
-    if (cleanCode === userOwnCode || cleanCode === `VXREF-${currentUsername.trim().toUpperCase()}`) {
+  // Self-referral checks against inputs
+  if (cleanCurUsername) {
+    if (
+      rawCandidate.toLowerCase() === cleanCurUsername ||
+      trimmed.toUpperCase() === `VXREF-${cleanCurUsername.toUpperCase()}` ||
+      trimmed.toUpperCase() === cleanCurUsername.toUpperCase()
+    ) {
       return {
         valid: false,
         error: 'Self-referral is prohibited. You cannot use your own referral code.'
@@ -65,31 +79,111 @@ export async function validateReferralCodeAsync(
     }
   }
 
-  // 1. Search in local authoritative user directory
+  if (cleanCurEmail) {
+    if (
+      trimmed.toLowerCase() === cleanCurEmail ||
+      rawCandidate.toLowerCase() === cleanCurEmail
+    ) {
+      return {
+        valid: false,
+        error: 'Self-referral is prohibited. You cannot use your own referral code.'
+      };
+    }
+  }
+
+  let found: User | undefined = undefined;
+
+  // 1. Search in local authoritative user directory (case-insensitive)
   const localUsers = getUsers();
-  let found = localUsers.find((u) => {
+  found = localUsers.find((u) => {
     if (!u) return false;
-    const uCode = (u.referralCode || '').toUpperCase();
-    const uGenCode = generateReferralCode(u.username || '').toUpperCase();
-    return uCode === cleanCode || uGenCode === cleanCode;
+    const uRef = (u.referralCode || '').trim().toUpperCase();
+    const uName = (u.username || '').trim().toUpperCase();
+    const uGen = generateReferralCode(u.username || '').trim().toUpperCase();
+    return (
+      uRef === trimmed.toUpperCase() ||
+      uRef === normalizedCode ||
+      uGen === normalizedCode ||
+      uName === rawCandidate.toUpperCase() ||
+      uName === trimmed.toUpperCase()
+    );
   });
 
-  // 2. If not found locally, query Cloud Firestore
+  // 2. Query serverless backend endpoint (/api/validate-referral) if running in web/hybrid mode
+  if (!found && typeof fetch !== 'undefined') {
+    try {
+      const resp = await fetch('/api/validate-referral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referralCode: trimmed,
+          currentUsername: cleanCurUsername,
+          currentEmail: cleanCurEmail
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.valid && data.referrer) {
+          found = data.referrer as User;
+        } else if (data?.isSelfReferral) {
+          return {
+            valid: false,
+            error: data.error || 'Self-referral is prohibited. You cannot use your own referral code.'
+          };
+        }
+      }
+    } catch {
+      // Offline or network fallback
+    }
+  }
+
+  // 3. Query Cloud Firestore (with case variations and public referral directory)
   if (!found) {
     try {
-      const usersCol = collection(db, 'users');
-      // Direct referralCode match
-      const snapByCode = await getDocs(query(usersCol, where('referralCode', '==', cleanCode)));
-      if (!snapByCode.empty) {
-        found = snapByCode.docs[0].data() as User;
-      } else {
-        // Derived format match: if code is VXREF-Username, query by username
-        if (cleanCode.startsWith('VXREF-')) {
-          const rawUsername = cleanCode.replace('VXREF-', '').trim();
-          const snapByUsername = await getDocs(query(usersCol, where('username', '==', rawUsername)));
-          if (!snapByUsername.empty) {
-            found = snapByUsername.docs[0].data() as User;
-          }
+      // 3A. Public referral_codes collection
+      try {
+        const refDocSnap = await getDoc(doc(db, 'referral_codes', normalizedCode));
+        if (refDocSnap.exists()) {
+          const rd = refDocSnap.data();
+          found = {
+            userId: rd.userId,
+            accountId: rd.accountId || `VX-${rd.username}`,
+            username: rd.username,
+            fullName: rd.fullName || rd.username,
+            email: rd.email || '',
+            role: 'USER',
+            accountStatus: (rd.status as any) || 'ACTIVE',
+            balance: 0,
+            referralEarnings: 0,
+            bonusBalance: 0,
+            totalDeposits: 0,
+            totalInvestments: 0,
+            totalProfitLoss: 0,
+            referralCode: rd.code || trimmed,
+            createdAt: new Date().toISOString()
+          };
+        }
+      } catch {}
+
+      // 3B. Direct queries against users collection
+      if (!found) {
+        const usersCol = collection(db, 'users');
+        const queries = [
+          query(usersCol, where('referralCode', '==', trimmed)),
+          query(usersCol, where('referralCode', '==', `VXREF-${rawCandidate}`)),
+          query(usersCol, where('referralCode', '==', normalizedCode)),
+          query(usersCol, where('username', '==', rawCandidate)),
+          query(usersCol, where('username', '==', rawCandidate.toLowerCase()))
+        ];
+
+        for (const q of queries) {
+          try {
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              found = snap.docs[0].data() as User;
+              break;
+            }
+          } catch {}
         }
       }
     } catch (fsErr) {
@@ -97,39 +191,38 @@ export async function validateReferralCodeAsync(
     }
   }
 
-  // 3. Fallback check for seed / default accounts
+  // 4. Fallback check for verified platform / seed accounts
   if (!found) {
-    if (cleanCode === 'VXREF-ADMIN' || cleanCode === 'VXREF-VAULTIX_ADMIN') {
-      found = localUsers.find((u) => u.username === 'vaultix_admin') || {
-        userId: 'USR-000001',
-        accountId: 'VX-100001',
-        username: 'vaultix_admin',
-        fullName: 'Vaultix Administrator',
-        email: 'vaultixincometeam@outlook.com',
-        role: 'ADMIN',
-        accountStatus: 'ACTIVE',
-        balance: 0,
-        referralEarnings: 0,
-        totalDeposits: 0,
-        totalInvestments: 0,
-        totalProfitLoss: 0,
-        referralCode: 'VXREF-ADMIN',
-        createdAt: '2026-01-01T00:00:00.000Z'
-      };
+    const cleanUpper = trimmed.toUpperCase();
+    const extUpper = rawCandidate.toUpperCase();
+
+    const seedFound = SEED_ACCOUNTS.find((s) => {
+      const sRef = (s.referralCode || '').trim().toUpperCase();
+      const sName = (s.username || '').trim().toUpperCase();
+      return (
+        sRef === cleanUpper ||
+        sRef === normalizedCode ||
+        sName === extUpper ||
+        `VXREF-${sName}` === normalizedCode
+      );
+    });
+
+    if (seedFound) {
+      found = seedFound;
     }
   }
 
   if (!found) {
     return {
       valid: false,
-      error: `Invalid referral code "${code}". Please verify the code and try again.`
+      error: `Invalid referral code "${trimmed}". Please verify the code and try again.`
     };
   }
 
-  // Prevent self-referral by email or username comparison
+  // Prevent self-referral against resolved referrer user
   if (
-    (currentUsername && found.username?.toLowerCase() === currentUsername.toLowerCase()) ||
-    (currentEmail && found.email?.toLowerCase() === currentEmail.toLowerCase())
+    (cleanCurUsername && found.username?.toLowerCase() === cleanCurUsername) ||
+    (cleanCurEmail && found.email?.toLowerCase() === cleanCurEmail)
   ) {
     return {
       valid: false,
@@ -277,6 +370,15 @@ export async function awardRegistrationBonuses(
     await setDoc(doc(db, 'transactions', inviteeTx.id), cleanFirestoreData(inviteeTx));
     await setDoc(doc(db, 'transactions', referrerTx.id), cleanFirestoreData(referrerTx));
     await setDoc(doc(db, 'invitations', newInvitation.id), cleanFirestoreData(newInvitation));
+    await setDoc(doc(db, 'referral_codes', updatedNewUser.referralCode.toUpperCase()), {
+      code: updatedNewUser.referralCode,
+      codeUpper: updatedNewUser.referralCode.toUpperCase(),
+      username: updatedNewUser.username,
+      usernameLower: updatedNewUser.username.toLowerCase(),
+      userId: updatedNewUser.userId,
+      fullName: updatedNewUser.fullName,
+      status: 'ACTIVE'
+    });
   } catch (fsErr) {
     console.warn('Firestore sync notice during bonus award:', fsErr);
   }
