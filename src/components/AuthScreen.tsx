@@ -473,8 +473,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       totalInvestments: 0.0,
       totalProfitLoss: 0.0,
       referralCode: generateReferralCode(cleanUsername),
+      usernameLower: cleanUsername.toLowerCase(),
+      referralCodeUpper: generateReferralCode(cleanUsername).toUpperCase(),
+      referralCodeLower: generateReferralCode(cleanUsername).toLowerCase(),
       createdAt: new Date().toISOString()
-    };
+    } as any;
 
     if (phoneNumber.trim()) {
       newUser.phoneNumber = phoneNumber.trim();
@@ -493,15 +496,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
     const cleanedUserData = cleanFirestoreData(newUser);
     try {
       await setDoc(doc(db, 'users', newUser.userId), cleanedUserData);
-      await setDoc(doc(db, 'referral_codes', newUser.referralCode.toUpperCase()), {
+      const refCodePayload = {
         code: newUser.referralCode,
         codeUpper: newUser.referralCode.toUpperCase(),
+        codeLower: newUser.referralCode.toLowerCase(),
         username: newUser.username,
         usernameLower: newUser.username.toLowerCase(),
         userId: newUser.userId,
         fullName: newUser.fullName,
         status: 'ACTIVE'
-      });
+      };
+      await Promise.allSettled([
+        setDoc(doc(db, 'referral_codes', newUser.referralCode.toUpperCase()), refCodePayload),
+        setDoc(doc(db, 'referral_codes', newUser.referralCode.toLowerCase()), refCodePayload),
+        setDoc(doc(db, 'referral_codes', newUser.username.toUpperCase()), refCodePayload),
+        setDoc(doc(db, 'referral_codes', newUser.username.toLowerCase()), refCodePayload)
+      ]);
     } catch (fsErr: any) {
       console.error('Firestore user profile write error:', fsErr);
     }

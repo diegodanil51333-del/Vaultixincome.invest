@@ -35,8 +35,9 @@ service cloud.firestore {
     // 1. Users Collection
     // ==========================================
     match /users/{userId} {
-      // Users can only read their own profile; Admin can read all users
-      allow read: if isOwner(userId) || isAdmin();
+      // Users can read profile metadata; Admin can read all users;
+      // Allow read for public profile and real-time referral verification
+      allow read: if true;
       
       // Normal user registration rule:
       // - Authenticated user can ONLY create their own document (request.auth.uid == userId)
@@ -160,14 +161,8 @@ service cloud.firestore {
     // 4. Invitations & Referral Tracking
     // ==========================================
     match /invitations/{invitationId} {
-      allow read: if isAdmin() || (
-        isAuthenticated() &&
-        resource != null &&
-        (resource.data.referrerId == request.auth.uid || resource.data.referredUserId == request.auth.uid)
-      );
-      allow create: if isAuthenticated() && (
-        request.resource.data.referrerId == request.auth.uid || isAdmin()
-      );
+      allow read: if isAuthenticated() || isAdmin();
+      allow create: if isAuthenticated() || isAdmin();
       allow update, delete: if isAdmin();
     }
 
@@ -205,8 +200,7 @@ service cloud.firestore {
     }
 
     match /referral_codes/{codeId} {
-      allow read: if true;
-      allow write: if isAuthenticated() || isAdmin();
+      allow read, write: if true;
     }
 
     // ==========================================

@@ -183,16 +183,20 @@ var AuthoritativeStore = class {
       };
     }
     let foundUser;
-    const candidateWithoutPrefix = normalizedCode.replace(/^VXREF-/, '');
+    const lowerCandidate = trimmed.replace(/^VXREF-/i, '').trim().toLowerCase();
+    const lowerTrimmed = trimmed.toLowerCase();
+    const lowerNormalized = `vxref-${lowerCandidate}`;
+
     for (const u of this.users.values()) {
-      const uRef = (u.referralCode || "").trim().toUpperCase();
-      const uName = (u.username || "").trim().toUpperCase();
+      const uRef = (u.referralCode || "").trim().toLowerCase();
+      const uName = (u.username || "").trim().toLowerCase();
       if (
-        uRef === normalizedCode ||
-        uName === normalizedCode ||
-        uName === candidateWithoutPrefix ||
-        ('VXREF-' + uName) === normalizedCode ||
-        ('VXREF-' + uRef) === normalizedCode
+        uRef === lowerTrimmed ||
+        uRef === lowerNormalized ||
+        uName === lowerCandidate ||
+        uName === lowerTrimmed ||
+        (`vxref-${uName}`) === lowerNormalized ||
+        (`vxref-${uRef}`) === lowerNormalized
       ) {
         foundUser = u;
         break;

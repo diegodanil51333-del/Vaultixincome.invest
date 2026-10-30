@@ -1,7 +1,10 @@
 /node_modules/
 dist/
+build/
+deployed-bundle.js
 .build-outputs
 debug.keystore.base64
+debug.keystore
 app/applet/build/
 .gradle/
 .kotlin/
@@ -13,9 +16,10 @@ local.properties
 firebase-debug.log
 .authoritative_store.json
 
-# Ignore large media attachments uploaded in chat turns (144MB of MP4s)
-public/assets/aistudio/*.mp4
+# Ignore large chat attachments uploaded during sessions
+public/assets/aistudio/
 *.mp4
+*.mov
 
 # Ignore zip archives from exports
 *.zip
