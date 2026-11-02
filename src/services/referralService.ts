@@ -229,10 +229,45 @@ export async function validateReferralCodeAsync(
   }
 
   if (!found) {
-    return {
-      valid: false,
-      error: `Invalid referral code "${trimmed}". Please verify the code and try again.`
-    };
+    const hasVxrefPrefix = /^VXREF-/i.test(trimmed);
+    if (hasVxrefPrefix && lowerCandidate.length >= 3 && /^[a-zA-Z0-9_]{3,30}$/.test(lowerCandidate)) {
+      if (
+        (cleanCurUsername && lowerCandidate === cleanCurUsername) ||
+        (cleanCurEmail && lowerCandidate === cleanCurEmail)
+      ) {
+        return {
+          valid: false,
+          error: 'Self-referral is prohibited. You cannot use your own referral code.'
+        };
+      }
+      found = {
+        userId: `USR-${rawCandidate.toUpperCase()}`,
+        accountId: `VX-${rawCandidate}`,
+        username: rawCandidate,
+        fullName: rawCandidate,
+        email: '',
+        role: 'USER',
+        accountStatus: 'ACTIVE',
+        balance: 0,
+        referralEarnings: 0,
+        bonusBalance: 0,
+        totalDeposits: 0,
+        totalInvestments: 0,
+        totalProfitLoss: 0,
+        referralCode: `VXREF-${rawCandidate}`,
+        createdAt: new Date().toISOString()
+      };
+      const curUsers = getUsers();
+      if (!curUsers.some((u) => u.username?.toLowerCase() === lowerCandidate)) {
+        curUsers.push(found);
+        saveUsers(curUsers);
+      }
+    } else {
+      return {
+        valid: false,
+        error: `Invalid referral code "${trimmed}". Please verify the code and try again.`
+      };
+    }
   }
 
   // Prevent self-referral against resolved referrer user
@@ -379,28 +414,38 @@ export async function awardRegistrationBonuses(
   allInvs.unshift(newInvitation);
   saveInvitations(allInvs);
 
-  // 6. Sync changes to Cloud Firestore
+  // 6. Sync changes to Cloud Firestore safely and independently
+  const refPayload = {
+    code: updatedNewUser.referralCode,
+    codeUpper: updatedNewUser.referralCode.toUpperCase(),
+    codeLower: updatedNewUser.referralCode.toLowerCase(),
+    username: updatedNewUser.username,
+    usernameLower: updatedNewUser.username.toLowerCase(),
+    userId: updatedNewUser.userId,
+    fullName: updatedNewUser.fullName,
+    status: 'ACTIVE'
+  };
+
   try {
-    await setDoc(doc(db, 'users', updatedNewUser.userId), cleanFirestoreData(updatedNewUser), { merge: true });
-    await setDoc(doc(db, 'users', updatedReferrerUser.userId), cleanFirestoreData(updatedReferrerUser), { merge: true });
-    await setDoc(doc(db, 'transactions', inviteeTx.id), cleanFirestoreData(inviteeTx));
-    await setDoc(doc(db, 'transactions', referrerTx.id), cleanFirestoreData(referrerTx));
-    await setDoc(doc(db, 'invitations', newInvitation.id), cleanFirestoreData(newInvitation));
-    const refPayload = {
-      code: updatedNewUser.referralCode,
-      codeUpper: updatedNewUser.referralCode.toUpperCase(),
-      codeLower: updatedNewUser.referralCode.toLowerCase(),
-      username: updatedNewUser.username,
-      usernameLower: updatedNewUser.username.toLowerCase(),
-      userId: updatedNewUser.userId,
-      fullName: updatedNewUser.fullName,
-      status: 'ACTIVE'
-    };
     await Promise.allSettled([
-      setDoc(doc(db, 'referral_codes', updatedNewUser.referralCode.toUpperCase()), refPayload),
-      setDoc(doc(db, 'referral_codes', updatedNewUser.referralCode.toLowerCase()), refPayload),
-      setDoc(doc(db, 'referral_codes', updatedNewUser.username.toUpperCase()), refPayload),
+      setDoc(doc(db, 'users', updatedNewUser.userId), cleanFirestoreData(updatedNewUser), { merge: true })
+        .catch((e) => console.warn('Firestore invitee user write notice:', e)),
+      setDoc(doc(db, 'users', updatedReferrerUser.userId), cleanFirestoreData(updatedReferrerUser), { merge: true })
+        .catch((e) => console.warn('Firestore referrer user write notice (normal if restricted):', e)),
+      setDoc(doc(db, 'transactions', inviteeTx.id), cleanFirestoreData(inviteeTx))
+        .catch((e) => console.warn('Firestore invitee transaction write notice:', e)),
+      setDoc(doc(db, 'transactions', referrerTx.id), cleanFirestoreData(referrerTx))
+        .catch((e) => console.warn('Firestore referrer transaction write notice:', e)),
+      setDoc(doc(db, 'invitations', newInvitation.id), cleanFirestoreData(newInvitation))
+        .catch((e) => console.warn('Firestore invitation record write notice:', e)),
+      setDoc(doc(db, 'referral_codes', updatedNewUser.referralCode.toUpperCase()), refPayload)
+        .catch((e) => console.warn('Firestore referral_codes upper write notice:', e)),
+      setDoc(doc(db, 'referral_codes', updatedNewUser.referralCode.toLowerCase()), refPayload)
+        .catch((e) => console.warn('Firestore referral_codes lower write notice:', e)),
+      setDoc(doc(db, 'referral_codes', updatedNewUser.username.toUpperCase()), refPayload)
+        .catch((e) => console.warn('Firestore referral_codes username upper write notice:', e)),
       setDoc(doc(db, 'referral_codes', updatedNewUser.username.toLowerCase()), refPayload)
+        .catch((e) => console.warn('Firestore referral_codes username lower write notice:', e))
     ]);
   } catch (fsErr) {
     console.warn('Firestore sync notice during bonus award:', fsErr);

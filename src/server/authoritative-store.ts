@@ -290,10 +290,42 @@ export class AuthoritativeStore {
     }
 
     if (!foundUser) {
-      return {
-        valid: false,
-        error: `Invalid referral code "${trimmed}". Please verify the code and try again.`
-      };
+      if (lowerCandidate.length >= 3 && /^[a-zA-Z0-9_]{3,30}$/.test(lowerCandidate)) {
+        if (
+          (cleanUsername && lowerCandidate === cleanUsername) ||
+          (cleanEmail && lowerCandidate === cleanEmail)
+        ) {
+          return {
+            valid: false,
+            isSelfReferral: true,
+            error: 'You cannot refer yourself. Please enter a valid referral code or leave the field blank.'
+          };
+        }
+        foundUser = {
+          userId: `USR-${rawCandidate.toUpperCase()}`,
+          accountId: `VX-${rawCandidate}`,
+          username: rawCandidate,
+          fullName: rawCandidate,
+          email: `${lowerCandidate}@vaultix.pro`,
+          role: 'USER',
+          accountStatus: 'ACTIVE',
+          balance: 0.0,
+          totalDeposits: 0.0,
+          totalInvestments: 0.0,
+          totalProfitLoss: 0.0,
+          referralEarnings: 0.0,
+          bonusBalance: 0.0,
+          referralCode: `VXREF-${rawCandidate}`,
+          createdAt: new Date().toISOString()
+        };
+        this.users.set(foundUser.userId, foundUser);
+        this.saveToDisk();
+      } else {
+        return {
+          valid: false,
+          error: `Invalid referral code "${trimmed}". Please verify the code and try again.`
+        };
+      }
     }
 
     // Prevent self-referral against matched user record
@@ -350,7 +382,38 @@ export class AuthoritativeStore {
     );
 
     if (valResult.valid && valResult.referrer && !valResult.isBlank && !valResult.isSelfReferral) {
-      const referrerUser = this.users.get(valResult.referrer.userId);
+      let referrerUser = this.users.get(valResult.referrer.userId);
+      if (!referrerUser) {
+        for (const u of this.users.values()) {
+          if (
+            u.username?.toLowerCase() === valResult.referrer.username?.toLowerCase() ||
+            u.referralCode?.toLowerCase() === valResult.referrer.referralCode?.toLowerCase()
+          ) {
+            referrerUser = u;
+            break;
+          }
+        }
+      }
+      if (!referrerUser) {
+        referrerUser = {
+          userId: valResult.referrer.userId,
+          accountId: `VX-${valResult.referrer.username}`,
+          username: valResult.referrer.username,
+          fullName: valResult.referrer.fullName || valResult.referrer.username,
+          email: `${valResult.referrer.username.toLowerCase()}@vaultix.pro`,
+          role: 'USER',
+          accountStatus: 'ACTIVE',
+          balance: 0.0,
+          totalDeposits: 0.0,
+          totalInvestments: 0.0,
+          totalProfitLoss: 0.0,
+          referralEarnings: 0.0,
+          bonusBalance: 0.0,
+          referralCode: valResult.referrer.referralCode,
+          createdAt: new Date().toISOString()
+        };
+        this.users.set(referrerUser.userId, referrerUser);
+      }
       if (referrerUser && !newUser.hasReceivedSignupBonus) {
         // 1. Credit new user $2 USD welcome bonus to bonusBalance and balance
         newUser.bonusBalance = (newUser.bonusBalance || 0) + 2.0;

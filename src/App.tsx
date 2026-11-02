@@ -108,7 +108,15 @@ export function App() {
           if (typeof window !== 'undefined') {
             const fullUrl = window.location.href;
             const pathname = window.location.pathname.toLowerCase();
-            const isRefLink = fullUrl.includes('=VXREF-') || fullUrl.includes('ref=') || pathname.includes('/register') || pathname.includes('/invite');
+            const matchEqual = fullUrl.match(/=(VXREF-[A-Za-z0-9-]+)/i);
+            const urlParams = new URLSearchParams(window.location.search);
+            const refParam = matchEqual?.[1] || urlParams.get('ref') || urlParams.get('referral');
+
+            if (refParam && refParam.trim()) {
+              sessionStorage.setItem('vaultix_captured_referral', refParam.trim().toUpperCase());
+            }
+
+            const isRefLink = Boolean(refParam) || fullUrl.includes('=VXREF-') || fullUrl.includes('ref=') || pathname.includes('/register') || pathname.includes('/invite');
             const isLoginOrDashboardLink = pathname.includes('/login') || pathname.includes('/dashboard');
 
             if (isRefLink) {

@@ -9,6 +9,8 @@ app/applet/build/
 .gradle/
 .kotlin/
 local.properties
+.env
+.env.local
 .DS_Store
 *.iml
 .idea/

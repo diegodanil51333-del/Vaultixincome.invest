@@ -38,8 +38,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
         const refParam = urlParams.get('ref') || urlParams.get('referral');
-        if (refParam && refParam.trim()) {
-          setReferralCodeInput(refParam.trim().toUpperCase());
+        const savedSessionRef = sessionStorage.getItem('vaultix_captured_referral');
+        const codeToUse = (refParam && refParam.trim()) || (savedSessionRef && savedSessionRef.trim()) || '';
+
+        if (codeToUse) {
+          setReferralCodeInput(codeToUse.toUpperCase());
+          sessionStorage.setItem('vaultix_captured_referral', codeToUse.toUpperCase());
           setTab('register');
         }
       }
@@ -51,24 +55,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
   // Auto-detect referral code from URL formats like `https://vaultixincome.vercel.app/=VXREF-3316` or `?ref=VXREF-3316`
   useEffect(() => {
     try {
-      const fullUrl = window.location.href;
-      let detectedCode = '';
+      if (typeof window !== 'undefined') {
+        const fullUrl = window.location.href;
+        let detectedCode = '';
 
-      // Check for `=VXREF-` pattern anywhere in path/query/hash
-      const matchEqual = fullUrl.match(/=(VXREF-[A-Za-z0-9-]+)/i);
-      if (matchEqual && matchEqual[1]) {
-        detectedCode = matchEqual[1];
-      } else {
-        const urlParams = new URLSearchParams(window.location.search);
-        const refParam = urlParams.get('ref');
-        if (refParam) {
-          detectedCode = refParam;
+        const matchEqual = fullUrl.match(/=(VXREF-[A-Za-z0-9-]+)/i);
+        if (matchEqual && matchEqual[1]) {
+          detectedCode = matchEqual[1];
+        } else {
+          const urlParams = new URLSearchParams(window.location.search);
+          const refParam = urlParams.get('ref') || urlParams.get('referral');
+          if (refParam) {
+            detectedCode = refParam;
+          } else {
+            detectedCode = sessionStorage.getItem('vaultix_captured_referral') || '';
+          }
         }
-      }
 
-      if (detectedCode) {
-        setReferralCodeInput(detectedCode.toUpperCase());
-        setTab('register');
+        if (detectedCode && detectedCode.trim()) {
+          const cleanCode = detectedCode.trim().toUpperCase();
+          setReferralCodeInput(cleanCode);
+          sessionStorage.setItem('vaultix_captured_referral', cleanCode);
+          setTab('register');
+        }
       }
     } catch {
       // Ignore URL parsing errors
@@ -516,18 +525,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       console.error('Firestore user profile write error:', fsErr);
     }
 
-    // Sync with server-side authoritative store
-    try {
-      await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user: newUser,
-          referralCode: referralCodeInput.trim()
-        })
-      });
-    } catch {}
-
     // 6. Process welcome bonus & referral reward atomically
     let finalUser = newUser;
     if (referrerUser) {
@@ -538,6 +535,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       currentList.push(finalUser);
       saveUsers(currentList);
     }
+
+    // Sync with server-side authoritative store
+    try {
+      await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user: finalUser,
+          referralCode: referralCodeInput.trim()
+        })
+      });
+    } catch {}
 
     // Clear saved referral parameter
     try {
