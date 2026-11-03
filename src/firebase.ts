@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, onSnapshot, query, where, updateDoc, limit, runTransaction } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, onSnapshot, query, where, updateDoc, limit, runTransaction, serverTimestamp, FieldValue } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL, uploadBytes, uploadString } from 'firebase/storage';
 
 const metaEnv = (import.meta as unknown as { env: Record<string, string> }).env || {};
@@ -37,6 +37,7 @@ setPersistence(auth, browserLocalPersistence).catch(() => {
 /**
  * Recursively removes any keys with `undefined` values from an object,
  * ensuring Firestore setDoc / updateDoc operations never fail due to `undefined` values.
+ * Preserves FieldValue instances (like serverTimestamp()).
  */
 export function cleanFirestoreData<T extends Record<string, any>>(data: T): Record<string, any> {
   const cleaned: Record<string, any> = {};
@@ -45,7 +46,14 @@ export function cleanFirestoreData<T extends Record<string, any>>(data: T): Reco
       continue;
     }
     if (value !== undefined) {
-      if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      if (
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        !(value instanceof Date) &&
+        !(value instanceof FieldValue) &&
+        !('_methodName' in (value as any))
+      ) {
         cleaned[key] = cleanFirestoreData(value);
       } else {
         cleaned[key] = value;
@@ -58,7 +66,7 @@ export function cleanFirestoreData<T extends Record<string, any>>(data: T): Reco
 export {
   setPersistence, browserLocalPersistence, onAuthStateChanged,
   doc, setDoc, getDoc, collection, getDocs, onSnapshot, query, where, updateDoc, limit,
-  runTransaction,
+  runTransaction, serverTimestamp,
   ref, getDownloadURL, uploadBytes, uploadString
 };
 export type { FirebaseUser };

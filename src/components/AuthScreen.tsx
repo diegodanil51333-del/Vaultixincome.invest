@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Transaction } from '../types';
 import { validateReferralCodeAsync, generateReferralCode, awardRegistrationBonuses, extractReferralCodeFromUrl } from '../services/referralService';
 import { getUsers, saveUsers, saveCurrentSession, getTransactions, saveTransactions, processRegistrationBonuses, normalizeUser } from '../db';
-import { auth, db, doc, setDoc, getDoc, collection, getDocs, query, where, isFirebaseConfigured, cleanFirestoreData } from '../firebase';
+import { auth, db, doc, setDoc, getDoc, collection, getDocs, query, where, isFirebaseConfigured, cleanFirestoreData, serverTimestamp } from '../firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, User as FirebaseUser } from 'firebase/auth';
 import { Lock, User as UserIcon, CheckCircle, AlertCircle, Gift, ArrowLeft, RefreshCw } from 'lucide-react';
 import { AmbientBackground } from './AmbientBackground';
@@ -482,6 +482,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       totalInvestments: 0.0,
       totalProfitLoss: 0.0,
       referralCode: generateReferralCode(cleanUsername),
+      referrerCodeUsed: referralCodeInput.trim() ? referralCodeInput.trim().toUpperCase() : '',
       usernameLower: cleanUsername.toLowerCase(),
       referralCodeUpper: generateReferralCode(cleanUsername).toUpperCase(),
       referralCodeLower: generateReferralCode(cleanUsername).toLowerCase(),
@@ -501,21 +502,32 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, initialT
       newUser.referredByDisplayName = referrerDisplayName;
     }
 
-    // Direct Firestore Document Creation
-    const cleanedUserData = cleanFirestoreData(newUser);
+    // Direct Firestore Document Creation: Atomically write user and referralCodes
+    const cleanedUserData = cleanFirestoreData({
+      ...newUser,
+      createdAt: serverTimestamp()
+    });
+    const refCodePayload = {
+      userId: newUser.userId,
+      referralCode: newUser.referralCode,
+      referralCodeUpper: newUser.referralCode.toUpperCase(),
+      referralCodeLower: newUser.referralCode.toLowerCase(),
+      code: newUser.referralCode,
+      codeUpper: newUser.referralCode.toUpperCase(),
+      codeLower: newUser.referralCode.toLowerCase(),
+      username: newUser.username,
+      usernameLower: newUser.username.toLowerCase(),
+      fullName: newUser.fullName,
+      status: 'ACTIVE',
+      createdAt: serverTimestamp()
+    };
     try {
-      await setDoc(doc(db, 'users', newUser.userId), cleanedUserData);
-      const refCodePayload = {
-        code: newUser.referralCode,
-        codeUpper: newUser.referralCode.toUpperCase(),
-        codeLower: newUser.referralCode.toLowerCase(),
-        username: newUser.username,
-        usernameLower: newUser.username.toLowerCase(),
-        userId: newUser.userId,
-        fullName: newUser.fullName,
-        status: 'ACTIVE'
-      };
       await Promise.allSettled([
+        setDoc(doc(db, 'users', newUser.userId), cleanedUserData),
+        setDoc(doc(db, 'referralCodes', newUser.referralCode.toUpperCase()), refCodePayload),
+        setDoc(doc(db, 'referralCodes', newUser.referralCode.toLowerCase()), refCodePayload),
+        setDoc(doc(db, 'referralCodes', newUser.username.toUpperCase()), refCodePayload),
+        setDoc(doc(db, 'referralCodes', newUser.username.toLowerCase()), refCodePayload),
         setDoc(doc(db, 'referral_codes', newUser.referralCode.toUpperCase()), refCodePayload),
         setDoc(doc(db, 'referral_codes', newUser.referralCode.toLowerCase()), refCodePayload),
         setDoc(doc(db, 'referral_codes', newUser.username.toUpperCase()), refCodePayload),

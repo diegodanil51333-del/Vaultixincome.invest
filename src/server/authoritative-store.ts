@@ -16,6 +16,7 @@ export interface AuthoritativeUser {
   referralEarnings: number;
   bonusBalance: number;
   referralCode: string;
+  referrerCodeUsed?: string;
   referredBy?: string;
   referredByUsername?: string;
   referredByDisplayName?: string;
@@ -269,7 +270,8 @@ export class AuthoritativeStore {
 
     // Search authoritative user records by referralCode or username (strictly case-insensitive via .toLowerCase())
     let foundUser: AuthoritativeUser | undefined;
-    const lowerCandidate = trimmed.replace(/^VXREF-/i, '').trim().toLowerCase();
+    const rawCandidate = trimmed.replace(/^VXREF-/i, '').trim();
+    const lowerCandidate = rawCandidate.toLowerCase();
     const lowerTrimmed = trimmed.toLowerCase();
     const lowerNormalized = `vxref-${lowerCandidate}`;
 
@@ -290,7 +292,8 @@ export class AuthoritativeStore {
     }
 
     if (!foundUser) {
-      if (lowerCandidate.length >= 3 && /^[a-zA-Z0-9_]{3,30}$/.test(lowerCandidate)) {
+      const hasPrefix = /^VXREF-/i.test(trimmed);
+      if (hasPrefix && lowerCandidate.length >= 3 && /^[a-zA-Z0-9_]{3,30}$/.test(lowerCandidate)) {
         if (
           (cleanUsername && lowerCandidate === cleanUsername) ||
           (cleanEmail && lowerCandidate === cleanEmail)
@@ -318,8 +321,6 @@ export class AuthoritativeStore {
           referralCode: `VXREF-${rawCandidate}`,
           createdAt: new Date().toISOString()
         };
-        this.users.set(foundUser.userId, foundUser);
-        this.saveToDisk();
       } else {
         return {
           valid: false,
@@ -419,6 +420,7 @@ export class AuthoritativeStore {
         newUser.bonusBalance = (newUser.bonusBalance || 0) + 2.0;
         newUser.balance = (newUser.balance || 0) + 2.0;
         newUser.hasReceivedSignupBonus = true;
+        newUser.referrerCodeUsed = referralCodeRaw ? referralCodeRaw.trim().toUpperCase() : '';
         newUser.referredBy = referrerUser.userId;
         newUser.referredByUsername = referrerUser.username;
         newUser.referredByDisplayName = referrerUser.fullName || referrerUser.username;

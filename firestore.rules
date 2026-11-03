@@ -199,6 +199,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /referralCodes/{codeId} {
+      allow read, write: if true;
+    }
+
     match /referral_codes/{codeId} {
       allow read, write: if true;
     }

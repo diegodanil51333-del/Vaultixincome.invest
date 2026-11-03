@@ -312,6 +312,7 @@ var AuthoritativeStore = class {
         newUser.bonusBalance = (newUser.bonusBalance || 0) + 2;
         newUser.balance = (newUser.balance || 0) + 2;
         newUser.hasReceivedSignupBonus = true;
+        newUser.referrerCodeUsed = referralCodeRaw ? referralCodeRaw.trim().toUpperCase() : '';
         newUser.referredBy = referrerUser.userId;
         newUser.referredByUsername = referrerUser.username;
         newUser.referredByDisplayName = referrerUser.fullName || referrerUser.username;

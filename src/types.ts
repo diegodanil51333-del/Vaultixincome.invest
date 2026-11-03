@@ -15,6 +15,10 @@ export interface User {
   totalInvestments: number;
   totalProfitLoss: number;
   referralCode: string;
+  referrerCodeUsed?: string;
+  referralCodeUpper?: string;
+  referralCodeLower?: string;
+  usernameLower?: string;
   referredBy?: string;
   referredByUsername?: string;
   referredByDisplayName?: string;

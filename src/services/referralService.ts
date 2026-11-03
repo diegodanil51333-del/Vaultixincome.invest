@@ -1,6 +1,6 @@
 import { User, Transaction, ReferralConfig, Invitation } from '../types';
 import { getUsers, saveUsers, getTransactions, saveTransactions, getReferralConfig, getInvitations, saveInvitations, normalizeUser, SEED_ACCOUNTS } from '../db';
-import { db, doc, setDoc, getDoc, getDocs, collection, query, where, cleanFirestoreData } from '../firebase';
+import { db, doc, setDoc, getDoc, getDocs, collection, query, where, cleanFirestoreData, serverTimestamp } from '../firebase';
 
 /**
  * Generates an authoritative, username-based referral code.
@@ -95,88 +95,101 @@ export async function validateReferralCodeAsync(
 
   let found: User | undefined = undefined;
 
-  // 1. Search in local authoritative user directory (case-insensitive on both sides)
-  const localUsers = getUsers();
-  found = localUsers.find((u) => {
-    if (!u) return false;
-    const uRef = (u.referralCode || '').trim().toLowerCase();
-    const uName = (u.username || '').trim().toLowerCase();
-    const uGen = generateReferralCode(u.username || '').trim().toLowerCase();
-    return (
-      uRef === trimmed.toLowerCase() ||
-      uRef === lowerCode ||
-      uGen === lowerCode ||
-      uName === lowerCandidate ||
-      uName === trimmed.toLowerCase()
-    );
-  });
+  // 1. Primary Source of Truth: Query Cloud Firestore referralCodes collection
+  try {
+    const candidateKeys = [
+      normalizedCode,
+      lowerCode,
+      rawCandidate.toUpperCase(),
+      lowerCandidate,
+      trimmed.toUpperCase(),
+      trimmed.toLowerCase()
+    ];
 
-  // 2. Query Cloud Firestore (with case variations and multi-doc public referral directory)
-  if (!found) {
-    try {
-      // 2A. Direct getDoc lookups on public referral_codes collection (O(1) instant)
-      const candidateKeys = [
-        normalizedCode,
-        lowerCode,
-        rawCandidate.toUpperCase(),
-        lowerCandidate,
-        trimmed.toUpperCase(),
-        trimmed.toLowerCase()
+    // Check dedicated root referralCodes collection (and referral_codes mirror)
+    for (const key of candidateKeys) {
+      try {
+        let refDocSnap = await getDoc(doc(db, 'referralCodes', key));
+        if (!refDocSnap.exists()) {
+          refDocSnap = await getDoc(doc(db, 'referral_codes', key));
+        }
+
+        if (refDocSnap.exists()) {
+          const rd = refDocSnap.data();
+          let fullUser: User | undefined = undefined;
+          if (rd.userId) {
+            try {
+              const uSnap = await getDoc(doc(db, 'users', rd.userId));
+              if (uSnap.exists()) {
+                fullUser = uSnap.data() as User;
+              }
+            } catch {}
+          }
+
+          found = fullUser || {
+            userId: rd.userId || `USR-${rawCandidate.toUpperCase()}`,
+            accountId: rd.accountId || `VX-${rd.username || rawCandidate}`,
+            username: rd.username || rawCandidate,
+            fullName: rd.fullName || rd.username || rawCandidate,
+            email: rd.email || '',
+            role: 'USER',
+            accountStatus: (rd.status as any) || 'ACTIVE',
+            balance: 0,
+            referralEarnings: 0,
+            bonusBalance: 0,
+            totalDeposits: 0,
+            totalInvestments: 0,
+            totalProfitLoss: 0,
+            referralCode: rd.referralCode || rd.code || `VXREF-${rd.username || rawCandidate}`,
+            createdAt: new Date().toISOString()
+          };
+          break;
+        }
+      } catch {}
+    }
+
+    // Direct queries against users collection in Firestore
+    if (!found) {
+      const usersCol = collection(db, 'users');
+      const queries = [
+        query(usersCol, where('referralCodeUpper', '==', normalizedCode)),
+        query(usersCol, where('usernameLower', '==', lowerCandidate)),
+        query(usersCol, where('referralCode', '==', trimmed)),
+        query(usersCol, where('referralCode', '==', `VXREF-${rawCandidate}`)),
+        query(usersCol, where('username', '==', rawCandidate)),
+        query(usersCol, where('username', '==', lowerCandidate))
       ];
 
-      for (const key of candidateKeys) {
+      for (const q of queries) {
         try {
-          const refDocSnap = await getDoc(doc(db, 'referral_codes', key));
-          if (refDocSnap.exists()) {
-            const rd = refDocSnap.data();
-            found = {
-              userId: rd.userId || `USR-${rawCandidate.toUpperCase()}`,
-              accountId: rd.accountId || `VX-${rd.username || rawCandidate}`,
-              username: rd.username || rawCandidate,
-              fullName: rd.fullName || rd.username || rawCandidate,
-              email: rd.email || '',
-              role: 'USER',
-              accountStatus: (rd.status as any) || 'ACTIVE',
-              balance: 0,
-              referralEarnings: 0,
-              bonusBalance: 0,
-              totalDeposits: 0,
-              totalInvestments: 0,
-              totalProfitLoss: 0,
-              referralCode: rd.code || `VXREF-${rd.username || rawCandidate}`,
-              createdAt: new Date().toISOString()
-            };
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            found = snap.docs[0].data() as User;
             break;
           }
         } catch {}
       }
-
-      // 2B. Direct queries against users collection
-      if (!found) {
-        const usersCol = collection(db, 'users');
-        const queries = [
-          query(usersCol, where('usernameLower', '==', lowerCandidate)),
-          query(usersCol, where('referralCodeUpper', '==', normalizedCode)),
-          query(usersCol, where('username', '==', rawCandidate)),
-          query(usersCol, where('username', '==', lowerCandidate)),
-          query(usersCol, where('referralCode', '==', trimmed)),
-          query(usersCol, where('referralCode', '==', `VXREF-${rawCandidate}`)),
-          query(usersCol, where('referralCode', '==', normalizedCode))
-        ];
-
-        for (const q of queries) {
-          try {
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-              found = snap.docs[0].data() as User;
-              break;
-            }
-          } catch {}
-        }
-      }
-    } catch (fsErr) {
-      console.warn('Firestore referral query notice:', fsErr);
     }
+  } catch (fsErr) {
+    console.warn('Firestore primary referral query notice:', fsErr);
+  }
+
+  // 2. Secondary Cache: Search in local authoritative user directory
+  if (!found) {
+    const localUsers = getUsers();
+    found = localUsers.find((u) => {
+      if (!u) return false;
+      const uRef = (u.referralCode || '').trim().toLowerCase();
+      const uName = (u.username || '').trim().toLowerCase();
+      const uGen = generateReferralCode(u.username || '').trim().toLowerCase();
+      return (
+        uRef === trimmed.toLowerCase() ||
+        uRef === lowerCode ||
+        uGen === lowerCode ||
+        uName === lowerCandidate ||
+        uName === trimmed.toLowerCase()
+      );
+    });
   }
 
   // 3. Query serverless backend endpoint (/api/validate-referral)
@@ -334,6 +347,7 @@ export async function awardRegistrationBonuses(
     balance: (Number(newUser.balance) || 0) + welcomeBonus,
     bonusBalance: (Number(newUser.bonusBalance) || 0) + welcomeBonus,
     hasReceivedSignupBonus: true,
+    referrerCodeUsed: newUser.referrerCodeUsed || referrerUser.referralCode || generateReferralCode(referrerUser.username),
     referredBy: referrerUser.userId,
     referredByUsername: referrerUser.username,
     referredByDisplayName: referrerUser.fullName || referrerUser.username
@@ -388,7 +402,6 @@ export async function awardRegistrationBonuses(
   };
 
   // 5. Commit to local memory and storage
-  // Insert or update newUser
   const newUserIdx = allUsers.findIndex((u) => u.userId === updatedNewUser.userId);
   if (newUserIdx !== -1) {
     allUsers[newUserIdx] = updatedNewUser;
@@ -396,7 +409,6 @@ export async function awardRegistrationBonuses(
     allUsers.push(updatedNewUser);
   }
 
-  // Update referrer in allUsers
   if (existingReferrerIdx !== -1) {
     allUsers[existingReferrerIdx] = updatedReferrerUser;
   } else {
@@ -404,40 +416,43 @@ export async function awardRegistrationBonuses(
   }
 
   saveUsers(allUsers);
-
-  // Save transactions
   allTxs.unshift(referrerTx);
   allTxs.unshift(inviteeTx);
   saveTransactions(allTxs);
-
-  // Save invitations
   allInvs.unshift(newInvitation);
   saveInvitations(allInvs);
 
-  // 6. Sync changes to Cloud Firestore safely and independently
+  // 6. Sync changes to Cloud Firestore safely and independently (referralCodes and referral_codes)
   const refPayload = {
+    userId: updatedNewUser.userId,
+    referralCode: updatedNewUser.referralCode,
+    referralCodeUpper: updatedNewUser.referralCode.toUpperCase(),
+    referralCodeLower: updatedNewUser.referralCode.toLowerCase(),
     code: updatedNewUser.referralCode,
     codeUpper: updatedNewUser.referralCode.toUpperCase(),
     codeLower: updatedNewUser.referralCode.toLowerCase(),
     username: updatedNewUser.username,
     usernameLower: updatedNewUser.username.toLowerCase(),
-    userId: updatedNewUser.userId,
     fullName: updatedNewUser.fullName,
-    status: 'ACTIVE'
+    status: 'ACTIVE',
+    createdAt: serverTimestamp()
   };
 
   try {
     await Promise.allSettled([
-      setDoc(doc(db, 'users', updatedNewUser.userId), cleanFirestoreData(updatedNewUser), { merge: true })
+      setDoc(doc(db, 'users', updatedNewUser.userId), cleanFirestoreData({
+        ...updatedNewUser,
+        createdAt: serverTimestamp()
+      }), { merge: true })
         .catch((e) => console.warn('Firestore invitee user write notice:', e)),
-      setDoc(doc(db, 'users', updatedReferrerUser.userId), cleanFirestoreData(updatedReferrerUser), { merge: true })
-        .catch((e) => console.warn('Firestore referrer user write notice (normal if restricted):', e)),
-      setDoc(doc(db, 'transactions', inviteeTx.id), cleanFirestoreData(inviteeTx))
-        .catch((e) => console.warn('Firestore invitee transaction write notice:', e)),
-      setDoc(doc(db, 'transactions', referrerTx.id), cleanFirestoreData(referrerTx))
-        .catch((e) => console.warn('Firestore referrer transaction write notice:', e)),
-      setDoc(doc(db, 'invitations', newInvitation.id), cleanFirestoreData(newInvitation))
-        .catch((e) => console.warn('Firestore invitation record write notice:', e)),
+      setDoc(doc(db, 'referralCodes', updatedNewUser.referralCode.toUpperCase()), refPayload)
+        .catch((e) => console.warn('Firestore referralCodes upper write notice:', e)),
+      setDoc(doc(db, 'referralCodes', updatedNewUser.referralCode.toLowerCase()), refPayload)
+        .catch((e) => console.warn('Firestore referralCodes lower write notice:', e)),
+      setDoc(doc(db, 'referralCodes', updatedNewUser.username.toUpperCase()), refPayload)
+        .catch((e) => console.warn('Firestore referralCodes username upper write notice:', e)),
+      setDoc(doc(db, 'referralCodes', updatedNewUser.username.toLowerCase()), refPayload)
+        .catch((e) => console.warn('Firestore referralCodes username lower write notice:', e)),
       setDoc(doc(db, 'referral_codes', updatedNewUser.referralCode.toUpperCase()), refPayload)
         .catch((e) => console.warn('Firestore referral_codes upper write notice:', e)),
       setDoc(doc(db, 'referral_codes', updatedNewUser.referralCode.toLowerCase()), refPayload)
@@ -445,7 +460,15 @@ export async function awardRegistrationBonuses(
       setDoc(doc(db, 'referral_codes', updatedNewUser.username.toUpperCase()), refPayload)
         .catch((e) => console.warn('Firestore referral_codes username upper write notice:', e)),
       setDoc(doc(db, 'referral_codes', updatedNewUser.username.toLowerCase()), refPayload)
-        .catch((e) => console.warn('Firestore referral_codes username lower write notice:', e))
+        .catch((e) => console.warn('Firestore referral_codes username lower write notice:', e)),
+      setDoc(doc(db, 'users', updatedReferrerUser.userId), cleanFirestoreData(updatedReferrerUser), { merge: true })
+        .catch((e) => console.warn('Firestore referrer user write notice (normal if restricted):', e)),
+      setDoc(doc(db, 'transactions', inviteeTx.id), cleanFirestoreData(inviteeTx))
+        .catch((e) => console.warn('Firestore invitee transaction write notice:', e)),
+      setDoc(doc(db, 'transactions', referrerTx.id), cleanFirestoreData(referrerTx))
+        .catch((e) => console.warn('Firestore referrer transaction write notice:', e)),
+      setDoc(doc(db, 'invitations', newInvitation.id), cleanFirestoreData(newInvitation))
+        .catch((e) => console.warn('Firestore invitation record write notice:', e))
     ]);
   } catch (fsErr) {
     console.warn('Firestore sync notice during bonus award:', fsErr);
