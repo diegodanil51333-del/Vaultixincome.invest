@@ -27,7 +27,9 @@ import {
   Compass,
   ArrowUpRight,
   Menu,
-  X
+  X,
+  Star,
+  Quote
 } from 'lucide-react';
 import { AmbientBackground } from './AmbientBackground';
 import { Footer } from './Footer';
@@ -118,6 +120,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
             >
               About Us
             </button>
+            <button 
+              onClick={() => scrollToSection('testimonials')}
+              className="hover:text-[#D4AF37] transition-colors cursor-pointer"
+            >
+              Testimonials
+            </button>
           </nav>
 
           {/* Desktop Action Buttons (Required: Login, Create Account) */}
@@ -181,6 +189,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
                 className="text-left py-2 px-3 rounded-lg hover:bg-[#1D2432]"
               >
                 About Us
+              </button>
+              <button 
+                onClick={() => scrollToSection('testimonials')} 
+                className="text-left py-2 px-3 rounded-lg hover:bg-[#1D2432]"
+              >
+                Testimonials
               </button>
             </div>
             <div className="pt-2 border-t border-[#2A3447] flex gap-2">
@@ -536,6 +550,203 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Visual Portfolio Showcase Cards with Professional Investment Photography */}
+            <div className="pt-8 border-t border-[#2A3447]/60">
+              <div className="text-center space-y-2 mb-6">
+                <span className="text-xs font-bold text-[#D4AF37] uppercase tracking-wider block">
+                  Institutional Portfolio Architecture
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-white">
+                  Multi-Strategy Yield & Compounding Portfolios
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="relative rounded-2xl overflow-hidden border border-[#2A3447] hover:border-[#D4AF37]/50 transition-all group shadow-xl bg-[#141923]">
+                  <img
+                    src="/bg_profit.jpg"
+                    alt="Institutional Profit Portfolio"
+                    className="w-full h-48 object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B0E14] via-[#0B0E14]/50 to-transparent"></div>
+                  <div className="absolute bottom-4 left-4 right-4 space-y-1">
+                    <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md inline-block">
+                      +$157,000 PROFIT YIELD
+                    </span>
+                    <h4 className="text-sm font-extrabold text-white">Automated Quant Arbitrage</h4>
+                    <p className="text-[11px] text-slate-300">Continuous 24/7 cross-venue liquidity routing and spreads.</p>
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden border border-[#2A3447] hover:border-[#D4AF37]/50 transition-all group shadow-xl bg-[#141923]">
+                  <img
+                    src="/bg_savings.jpg"
+                    alt="Smart Wealth Savings"
+                    className="w-full h-48 object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B0E14] via-[#0B0E14]/50 to-transparent"></div>
+                  <div className="absolute bottom-4 left-4 right-4 space-y-1">
+                    <span className="text-[10px] font-black text-[#D4AF37] bg-[#D4AF37]/15 border border-[#D4AF37]/30 px-2 py-0.5 rounded-md inline-block">
+                      STABLE VALUE PRESERVATION
+                    </span>
+                    <h4 className="text-sm font-extrabold text-white">Multi-Asset Treasury Custody</h4>
+                    <p className="text-[11px] text-slate-300">Over-collateralized stable assets held in 100% cold vaults.</p>
+                  </div>
+                </div>
+
+                <div className="relative rounded-2xl overflow-hidden border border-[#2A3447] hover:border-[#D4AF37]/50 transition-all group shadow-xl bg-[#141923]">
+                  <img
+                    src="/bg_growth.jpg"
+                    alt="Compounding Capital"
+                    className="w-full h-48 object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B0E14] via-[#0B0E14]/50 to-transparent"></div>
+                  <div className="absolute bottom-4 left-4 right-4 space-y-1">
+                    <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 rounded-md inline-block">
+                      COMPOUNDING WEALTH
+                    </span>
+                    <h4 className="text-sm font-extrabold text-white">Apex Growth Portfolios</h4>
+                    <p className="text-[11px] text-slate-300">Accelerated compounding with guaranteed principle return.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 8. CUSTOMER TESTIMONIALS SECTION (Requirement 4: Clearly Labelled Placeholders) */}
+        <section id="testimonials" className="relative z-10 py-16 sm:py-24 border-b border-[#2A3447] bg-[#0E121B]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+            <div className="text-center space-y-3 max-w-3xl mx-auto">
+              <span className="text-xs font-bold text-[#D4AF37] uppercase tracking-wider block">
+                Client Reviews • Representative Feedback Preview
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white">
+                Client Experiences & Platform Feedback
+              </h2>
+              <div className="inline-block bg-[#1D2432] border border-[#D4AF37]/40 text-[#D4AF37] text-[11px] font-semibold px-4 py-1.5 rounded-full">
+                Notice: Displaying sample review layouts below. Genuine customer testimonials will be published upon verified authorization.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Testimonial Placeholder 1 */}
+              <div className="bg-[#141923] border border-[#2A3447] hover:border-[#D4AF37]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between transition-all group shadow-xl relative">
+                <Quote className="absolute top-6 right-6 w-8 h-8 text-[#D4AF37]/20 pointer-events-none" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1 text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      ))}
+                      <span className="text-xs font-bold text-white ml-2">5.0</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 bg-[#1D2432] px-2 py-0.5 rounded border border-[#2A3447]">
+                      Sample Placeholder
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed italic">
+                    "VAULTIX INCOME provides a structured interface for digital asset liquidity. Daily compounding in the Genesis Stable Yield vault operates with full ledger transparency, and automated principal release at maturity delivers reliable execution."
+                  </p>
+                </div>
+
+                <div className="pt-6 mt-6 border-t border-[#2A3447]/80 flex items-center space-x-3.5">
+                  <img
+                    src="/testimonials/marcus.jpg"
+                    alt="Marcus Vance (Sample Placeholder)"
+                    className="w-12 h-12 rounded-full border-2 border-[#D4AF37]/60 object-cover shadow-md shrink-0 opacity-90"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-extrabold text-white flex items-center space-x-1.5">
+                      <span className="truncate">Marcus Vance</span>
+                      <span title="Sample Client Persona"><CheckCircle2 className="w-4 h-4 text-[#D4AF37] shrink-0" /></span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 truncate">Senior Wealth Manager, London</div>
+                    <div className="text-[10px] text-amber-300/80 font-mono mt-0.5">[Sample Review Placeholder]</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Testimonial Placeholder 2 */}
+              <div className="bg-[#141923] border border-[#D4AF37]/60 rounded-2xl p-6 sm:p-7 flex flex-col justify-between transition-all shadow-xl shadow-[#D4AF37]/5 relative">
+                <Quote className="absolute top-6 right-6 w-8 h-8 text-[#D4AF37]/25 pointer-events-none" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1 text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      ))}
+                      <span className="text-xs font-bold text-white ml-2">5.0</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-400/90 bg-[#1D2432] px-2 py-0.5 rounded border border-[#D4AF37]/30">
+                      Sample Placeholder
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed italic">
+                    "The automated yield routing and multi-asset vault interface are well engineered. The platform offers transparent fee accounting, verified cold storage security disclosures, and responsive operations support."
+                  </p>
+                </div>
+
+                <div className="pt-6 mt-6 border-t border-[#2A3447]/80 flex items-center space-x-3.5">
+                  <img
+                    src="/testimonials/elena.jpg"
+                    alt="Elena Rostova (Sample Placeholder)"
+                    className="w-12 h-12 rounded-full border-2 border-[#D4AF37]/60 object-cover shadow-md shrink-0 opacity-90"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-extrabold text-white flex items-center space-x-1.5">
+                      <span className="truncate">Elena Rostova</span>
+                      <span title="Sample Client Persona"><CheckCircle2 className="w-4 h-4 text-[#D4AF37] shrink-0" /></span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 truncate">Quantitative Fund Director, Zurich</div>
+                    <div className="text-[10px] text-amber-300/80 font-mono mt-0.5">[Sample Review Placeholder]</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Testimonial Placeholder 3 */}
+              <div className="bg-[#141923] border border-[#2A3447] hover:border-[#D4AF37]/50 rounded-2xl p-6 sm:p-7 flex flex-col justify-between transition-all group shadow-xl relative">
+                <Quote className="absolute top-6 right-6 w-8 h-8 text-[#D4AF37]/20 pointer-events-none" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1 text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      ))}
+                      <span className="text-xs font-bold text-white ml-2">5.0</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 bg-[#1D2432] px-2 py-0.5 rounded border border-[#2A3447]">
+                      Sample Placeholder
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed italic">
+                    "The affiliate and referral structure integrates smoothly with clean dashboard attribution. The unified USD balance ledger and straightforward withdrawal processes provide a clear user experience."
+                  </p>
+                </div>
+
+                <div className="pt-6 mt-6 border-t border-[#2A3447]/80 flex items-center space-x-3.5">
+                  <img
+                    src="/testimonials/david.jpg"
+                    alt="David Chen (Sample Placeholder)"
+                    className="w-12 h-12 rounded-full border-2 border-[#D4AF37]/60 object-cover shadow-md shrink-0 opacity-90"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-extrabold text-white flex items-center space-x-1.5">
+                      <span className="truncate">David Chen</span>
+                      <span title="Sample Client Persona"><CheckCircle2 className="w-4 h-4 text-[#D4AF37] shrink-0" /></span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 truncate">Portfolio Trustee, Singapore</div>
+                    <div className="text-[10px] text-amber-300/80 font-mono mt-0.5">[Sample Review Placeholder]</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Disclaimer Note (Requirement 4) */}
+            <div className="max-w-4xl mx-auto p-4 bg-[#141923] border border-[#2A3447] rounded-xl text-[11px] text-slate-400 text-center leading-relaxed">
+              <span className="font-bold text-slate-300">Important Disclosure & Risk Disclaimer: </span>
+              Digital asset investments involve significant market risk. Past performance and illustrative model yields are not guarantees of future returns. All vault allocations, lockup periods, and yield distributions are governed by platform vault terms and market liquidity conditions.
             </div>
           </div>
         </section>

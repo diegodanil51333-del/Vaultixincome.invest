@@ -91,7 +91,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenSupport }) => {
 
         {/* Bottom Bar */}
         <div className="pt-6 border-t border-[#2A3447]/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
-          <div>© 2020 Vaultix Income. All rights reserved.</div>
+          <div>© 2026 Vaultix Income. All rights reserved.</div>
           <div className="flex items-center space-x-4">
             <span>Global USD Platform</span>
             <span>•</span>
